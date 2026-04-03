@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/DevSource.Dispatcher.Engine/DevSource.Dispatcher.Engine.csproj" />
     <Project Path="src/DevSource.Dispatcher/DevSource.Dispatcher.csproj" />
   </Folder>
 </Solution>
