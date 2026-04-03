@@ -1,0 +1,156 @@
+using DevSource.Dispatcher.Commands;
+
+namespace DevSource.Dispatcher.Engine;
+
+/// <summary>
+/// Provides a caching mechanism for command dispatching operations to optimize the invocation
+/// of command handlers and associated pipeline behaviors during execution. This class is
+/// designed for internal use by the command dispatcher infrastructure.
+/// </summary>
+/// <typeparam name="TCommand">
+/// The type of the command being dispatched. Must implement the <see cref="ICommand"/> interface.
+/// </typeparam>
+internal static class CommandDispatchCache<TCommand>
+    where TCommand : ICommand
+{
+    public static readonly Func<IRequestHandlerResolver, TCommand, CancellationToken, ValueTask> ExecuteAsync = ExecuteCoreAsync;
+
+    /// <summary>
+    /// Executes the core logic for dispatching a command, including resolving the appropriate
+    /// command handler, ordering pipeline behaviors, and invoking them in sequence.
+    /// </summary>
+    /// The type 'TCommand' of the command being executed. Must implement the <see cref="ICommand"/> interface.
+    /// <param name="handlerResolver">
+    /// An instance of <see cref="IRequestHandlerResolver"/> used to resolve the command handler and behaviors.
+    /// </param>
+    /// <param name="command">The command instance to be dispatched and handled.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A <see cref="ValueTask"/> that represents the asynchronous execution operation.</returns>
+    private static ValueTask ExecuteCoreAsync(IRequestHandlerResolver handlerResolver, TCommand command,
+        CancellationToken cancellationToken)
+    {
+        var handler = handlerResolver.GetRequiredCommandHandler<TCommand>();
+        var behaviors = PipelineBehaviorOrderer.Order(handlerResolver.GetCommandBehaviors<TCommand>());
+
+        return InvokeAsync(behaviors, handler, command,  0, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes the given pipeline behaviors and command handler in sequence while supporting recursive
+    /// execution to handle each behavior until the final handler is reached.
+    /// </summary>
+    /// <param name="behaviors">
+    /// A read-only list of <see cref="IPipelineBehavior{TCommand}"/> instances representing pipeline behaviors
+    /// to be executed in the specified order.
+    /// </param>
+    /// <param name="handler">
+    /// The <see cref="ICommandHandler{TCommand}"/> responsible for handling the execution of the command
+    /// after all pipeline behaviors have been processed.
+    /// </param>
+    /// <param name="command">
+    /// The command instance being dispatched and handled. Must implement the <see cref="ICommand"/> interface.
+    /// </param>
+    /// <param name="index">
+    /// The current index of the pipeline behavior being processed, used for recursive invocation.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token to monitor for cancellation requests during the invocation of behaviors and handler.
+    /// </param>
+    /// <returns>A <see cref="ValueTask"/> that represents the asynchronous execution operation.</returns>
+    private static ValueTask InvokeAsync(
+        IReadOnlyList<IPipelineBehavior<TCommand>> behaviors,
+        ICommandHandler<TCommand> handler,
+        TCommand command,
+        int index,
+        CancellationToken cancellationToken)
+    {
+        if (index >= behaviors.Count)
+            return handler.HandleAsync(command, cancellationToken);
+
+        return behaviors[index].HandleAsync(
+            command,
+            () => InvokeAsync(behaviors, handler, command,  index + 1, cancellationToken),
+            cancellationToken);
+    }
+}
+
+/// <summary>
+/// Provides a caching mechanism for the execution of command handlers to optimize
+/// performance and reduce overhead during the dispatching process. This static class
+/// encapsulates precompiled operation logic for handling commands and their responses.
+/// </summary>
+/// <typeparam name="TCommand">
+/// The type of the command being dispatched. Must implement the <see cref="ICommand{TResponse}"/> interface.
+/// </typeparam>
+/// <typeparam name="TResponse">
+/// The type of the response expected after the execution of the command.
+/// </typeparam>
+internal static class CommandDispatchCache<TCommand, TResponse>
+    where TCommand : ICommand<TResponse>
+{
+    public static readonly Func<IRequestHandlerResolver, TCommand, CancellationToken, ValueTask<TResponse>> ExecuteAsync = ExecuteCoreAsync;
+
+    /// <summary>
+    /// Executes the primary logic for dispatching a command by resolving the appropriate command
+    /// handler, arranging pipeline behaviors in their defined order, and invoking them sequentially.
+    /// </summary>    
+    /// The type 'TCommand' of the command being executed. Must implement the <see cref="ICommand{TResponse}"/> interface.    
+    /// The type 'TResponse' of the expected response generated by the command execution.
+    /// <param name="handlerResolver">
+    /// An instance of <see cref="IRequestHandlerResolver"/> used to resolve the command handler
+    /// and any associated pipeline behaviors.
+    /// </param>
+    /// <param name="command">The command instance to be processed.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <returns>
+    /// A <see cref="ValueTask{TResponse}"/> representing the asynchronous operation of executing
+    /// the command and returning the result.
+    /// </returns>
+    private static ValueTask<TResponse> ExecuteCoreAsync(IRequestHandlerResolver handlerResolver, TCommand command,
+        CancellationToken cancellationToken)
+    {
+        var handler = handlerResolver.GetRequiredCommandHandler<TCommand, TResponse>();
+        var behaviors = PipelineBehaviorOrderer.Order(handlerResolver.GetBehaviors<TCommand, TResponse>());
+
+        return InvokeAsync(behaviors, handler, command,  0, cancellationToken);
+    }
+
+    /// <summary>
+    /// Recursively invokes a sequence of pipeline behaviors on a command, culminating in the execution
+    /// of the command handler once all behaviors have been processed.
+    /// </summary>
+    /// <param name="behaviors">
+    /// A read-only list of <see cref="IPipelineBehavior{TCommand, TResponse}"/> instances to be executed
+    /// in the specified order before the command handler is invoked.
+    /// </param>
+    /// <param name="handler">
+    /// The <see cref="ICommandHandler{TCommand, TResponse}"/> responsible for handling the command once
+    /// all pipeline behaviors have been processed.
+    /// </param>
+    /// <param name="command">The command instance to be processed through the behaviors and handler.</param>
+    /// <param name="index">
+    /// The current index of the pipeline behavior being executed. Used to track recursive progression.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token to monitor for cancellation requests during the execution of behaviors and the handler.
+    /// </param>
+    /// <returns>
+    /// A <see cref="ValueTask{TResponse}"/> representing the asynchronous execution of the pipeline
+    /// behaviors and eventual command handling.
+    /// </returns>
+    private static ValueTask<TResponse> InvokeAsync(
+        IReadOnlyList<IPipelineBehavior<TCommand, TResponse>> behaviors,
+        ICommandHandler<TCommand, TResponse> handler,
+        TCommand command,
+        int index,
+        CancellationToken cancellationToken)
+    {
+        if (index >= behaviors.Count)
+            return handler.HandleAsync(command, cancellationToken);
+
+        return behaviors[index].HandleAsync(
+            command,
+            () => InvokeAsync(behaviors, handler, command,  index + 1, cancellationToken),
+            cancellationToken);
+    }
+}
