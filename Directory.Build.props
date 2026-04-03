@@ -16,7 +16,6 @@
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         
-        <!-- Packing -->
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        
     </PropertyGroup>
 </Project>

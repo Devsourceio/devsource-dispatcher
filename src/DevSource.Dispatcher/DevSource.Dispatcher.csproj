@@ -4,6 +4,43 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>true</IsPackable>
+    <PackageId>DevSource.Dispatcher</PackageId>
+    <Title>DevSource.Dispatcher</Title>
+    <Description>High-performance dispatcher for .NET with commands, queries, notifications, deterministic pipelines, runtime fallback, and source-generated dispatch.</Description>
+    <PackageTags>dispatcher;cqrs;mediator;pipeline;source-generator;performance</PackageTags>
+    <RepositoryUrl>https://github.com/uitanmaciel/devsource-dispatcher</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/uitanmaciel/devsource-dispatcher</PackageProjectUrl>    
+    <Authors>Uitan Maciel</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeEngineBuildOutput</TargetsForTfmSpecificBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeSourceGeneratorAnalyzer</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <Target Name="BuildOnePackageArtifacts" BeforeTargets="Pack">
+    <MSBuild Projects="..\DevSource.Dispatcher.Engine\DevSource.Dispatcher.Engine.csproj" Targets="Build" Properties="Configuration=$(Configuration);BuildProjectReferences=false" />
+    <MSBuild Projects="..\DevSource.Dispatcher.SourceGenerator\DevSource.Dispatcher.SourceGenerator.csproj" Targets="Build" Properties="Configuration=$(Configuration);BuildProjectReferences=false" />
+  </Target>
+
+  <Target Name="IncludeEngineBuildOutput">
+    <ItemGroup>
+      <BuildOutputInPackage Include="..\DevSource.Dispatcher.Engine\bin\$(Configuration)\net10.0\DevSource.Dispatcher.Engine.dll">
+        <TargetPath>DevSource.Dispatcher.Engine.dll</TargetPath>
+      </BuildOutputInPackage>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="IncludeSourceGeneratorAnalyzer">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="..\DevSource.Dispatcher.SourceGenerator\bin\$(Configuration)\netstandard2.0\DevSource.Dispatcher.SourceGenerator.dll">
+        <PackagePath>analyzers/dotnet/cs</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
 
 </Project>
