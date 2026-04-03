@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Microsoft.AspNetCore.OpenApi": {
+        "type": "Direct",
+        "requested": "[10.0.4, )",
+        "resolved": "10.0.4",
+        "contentHash": "OsEhbmT4Xenukau5YCR867gr/HmuAJ9DqMBPQGTcmdNU/TqBqdcnB+yLNwD/mTdkHzLBB+XG7cI4H1L5B1jx+Q==",
+        "dependencies": {
+          "Microsoft.OpenApi": "2.0.0"
+        }
+      },
+      "Microsoft.OpenApi": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "GGYLfzV/G/ct80OZ45JxnWP7NvMX1BCugn/lX7TH5o0lcVaviavsLMTxmFV2AybXWjbi3h6FF1vgZiTK6PXndw=="
+      },
+      "devsource.dispatcher": {
+        "type": "Project"
+      },
+      "devsource.dispatcher.engine": {
+        "type": "Project",
+        "dependencies": {
+          "DevSource.Dispatcher": "[1.0.0, )"
+        }
+      },
+      "order.application": {
+        "type": "Project",
+        "dependencies": {
+          "DevSource.Dispatcher": "[1.0.0, )",
+          "DevSource.Dispatcher.Engine": "[1.0.0, )",
+          "Order.Domain": "[1.0.0, )"
+        }
+      },
+      "order.domain": {
+        "type": "Project"
+      }
+    }
+  }
+}
