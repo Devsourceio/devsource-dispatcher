@@ -4,4 +4,7 @@
     <Project Path="src/DevSource.Dispatcher.SourceGenerator/DevSource.Dispatcher.SourceGenerator.csproj" />
     <Project Path="src/DevSource.Dispatcher/DevSource.Dispatcher.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DevSource.Dispatcher.Tests/DevSource.Dispatcher.Tests.csproj" />
+  </Folder>
 </Solution>
