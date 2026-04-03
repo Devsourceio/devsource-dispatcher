@@ -144,61 +144,6 @@ services.AddSingleton<IClock, SystemClock>();
 services.AddGeneratedDispatcher();
 ```
 
-### Use without DI
-
-You can also use the dispatcher without `IServiceProvider`. In this mode, you provide your own resolver.
-
-```csharp
-using DevSource.Dispatcher.Commands;
-using DevSource.Dispatcher.Engine;
-using DevSource.Dispatcher.Notifications;
-using DevSource.Dispatcher.Queries;
-
-var resolver = new ManualResolver(
-    new CreateOrderHandler(new InMemoryOrderRepository()),
-    new GetOrderHandler(new InMemoryOrderRepository()));
-
-var commandDispatcher = new CommandDispatcher(resolver);
-var queryDispatcher = new QueryDispatcher(resolver);
-var notificationDispatcher = new NotificationDispatcher(resolver);
-var mediator = new DevSource.Dispatcher.Engine.Mediator(commandDispatcher, queryDispatcher, notificationDispatcher);
-
-var orderId = await mediator.SendAsync<CreateOrderCommand, Guid>(new CreateOrderCommand("Ada Lovelace"));
-
-sealed class ManualResolver : IRequestHandlerResolver
-{
-    private readonly ICommandHandler<CreateOrderCommand, Guid> _commandHandler;
-    private readonly IQueryHandler<GetOrderQuery, OrderDto> _queryHandler;
-
-    public ManualResolver(
-        ICommandHandler<CreateOrderCommand, Guid> commandHandler,
-        IQueryHandler<GetOrderQuery, OrderDto> queryHandler)
-    {
-        _commandHandler = commandHandler;
-        _queryHandler = queryHandler;
-    }
-
-    public ICommandHandler<TCommand> GetRequiredCommandHandler<TCommand>() where TCommand : ICommand
-        => throw new NotSupportedException();
-
-    public ICommandHandler<TCommand, TResponse> GetRequiredCommandHandler<TCommand, TResponse>() where TCommand : ICommand<TResponse>
-        => typeof(TCommand) == typeof(CreateOrderCommand) && typeof(TResponse) == typeof(Guid)
-            ? (ICommandHandler<TCommand, TResponse>)_commandHandler
-            : throw new InvalidOperationException($"No handler for {typeof(TCommand).Name}.");
-
-    public IQueryHandler<TQuery, TResponse> GetRequiredQueryHandler<TQuery, TResponse>() where TQuery : IQuery<TResponse>
-        => typeof(TQuery) == typeof(GetOrderQuery) && typeof(TResponse) == typeof(OrderDto)
-            ? (IQueryHandler<TQuery, TResponse>)_queryHandler
-            : throw new InvalidOperationException($"No handler for {typeof(TQuery).Name}.");
-
-    public IEnumerable<IPipelineBehavior<TCommand>> GetCommandBehaviors<TCommand>() where TCommand : ICommand => [];
-
-    public IEnumerable<IPipelineBehavior<TRequest, TResponse>> GetBehaviors<TRequest, TResponse>() where TRequest : notnull => [];
-
-    public IEnumerable<INotificationHandler<TNotification>> GetNotificationHandlers<TNotification>() where TNotification : INotification => [];
-}
-```
-
 ## Layered Sample
 
 The repository includes a real layered sample under `samples/`:
