@@ -1,15 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NoWarn>$(NoWarn);1591</NoWarn>
-  </PropertyGroup>
-
-   <PropertyGroup>    
-    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\DevSource.Dispatcher\DevSource.Dispatcher.csproj" />
+    <ProjectReference Include="..\..\src\DevSource.Dispatcher\DevSource.Dispatcher.csproj" AdditionalProperties="GeneratePackageOnBuild=false" />
     <ProjectReference Include="..\..\src\DevSource.Dispatcher.Engine\DevSource.Dispatcher.Engine.csproj" />
   </ItemGroup>
 

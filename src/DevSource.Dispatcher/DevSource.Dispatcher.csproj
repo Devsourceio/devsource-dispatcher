@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -6,25 +6,32 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>DevSource.Dispatcher</PackageId>
     <Title>DevSource.Dispatcher</Title>
     <Description>High-performance dispatcher for .NET with commands, queries, notifications, deterministic pipelines, runtime fallback, and source-generated dispatch.</Description>
     <PackageTags>dispatcher;cqrs;mediator;pipeline;source-generator;performance</PackageTags>
     <RepositoryUrl>https://github.com/uitanmaciel/devsource-dispatcher</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/uitanmaciel/devsource-dispatcher</PackageProjectUrl>    
+    <PackageProjectUrl>https://github.com/uitanmaciel/devsource-dispatcher</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Uitan Maciel</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeEngineBuildOutput</TargetsForTfmSpecificBuildOutput>
     <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeSourceGeneratorAnalyzer</TargetsForTfmSpecificContentInPackage>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
-  <Target Name="BuildOnePackageArtifacts" BeforeTargets="Pack">
-    <MSBuild Projects="..\DevSource.Dispatcher.Engine\DevSource.Dispatcher.Engine.csproj" Targets="Build" Properties="Configuration=$(Configuration);BuildProjectReferences=false" />
-    <MSBuild Projects="..\DevSource.Dispatcher.SourceGenerator\DevSource.Dispatcher.SourceGenerator.csproj" Targets="Build" Properties="Configuration=$(Configuration);BuildProjectReferences=false" />
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <Target Name="BuildOnePackageArtifacts" BeforeTargets="Pack" Condition="'$(NoBuild)' != 'true'">
+    <MSBuild Projects="..\DevSource.Dispatcher.Engine\DevSource.Dispatcher.Engine.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
+    <MSBuild Projects="..\DevSource.Dispatcher.SourceGenerator\DevSource.Dispatcher.SourceGenerator.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
   </Target>
 
   <Target Name="IncludeEngineBuildOutput">

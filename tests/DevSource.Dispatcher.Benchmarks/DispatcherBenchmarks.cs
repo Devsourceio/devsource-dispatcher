@@ -74,6 +74,10 @@ public class DispatcherBenchmarks
         => _devSourceGeneratedCommandDispatcher.DispatchAsync<DevSourceCommand, int>(new DevSourceCommand(42));
 
     [Benchmark]
+    public Task<int> MediatR_Command()
+        => _mediatR.Send(new MediatRCommand(42));
+
+    [Benchmark]
     public async Task<int> Wolverine_Command()
     {
         WolverineBenchmarkProbe.ResetCommand();
@@ -82,16 +86,16 @@ public class DispatcherBenchmarks
     }
 
     [Benchmark]
-    public Task<int> MediatR_Command()
-        => _mediatR.Send(new MediatRCommand(42));
-
-    [Benchmark]
     public ValueTask<int> DevSource_Runtime_Query()
         => _devSourceRuntimeQueryDispatcher.DispatchAsync<DevSourceQuery, int>(new DevSourceQuery(42));
 
     [Benchmark]
     public ValueTask<int> DevSource_Generated_Query()
-        => _devSourceGeneratedQueryDispatcher.DispatchAsync<DevSourceQuery, int>(new DevSourceQuery(42));    
+        => _devSourceGeneratedQueryDispatcher.DispatchAsync<DevSourceQuery, int>(new DevSourceQuery(42));
+
+    [Benchmark]
+    public Task<int> MediatR_Query()
+        => _mediatR.Send(new MediatRQuery(42));
 
     [Benchmark]
     public async Task<int> Wolverine_Query()
@@ -100,10 +104,6 @@ public class DispatcherBenchmarks
         await _wolverineBus.InvokeAsync(new WolverineQuery(42)).ConfigureAwait(false);
         return await WolverineBenchmarkProbe.QueryTask.ConfigureAwait(false);
     }
-
-    [Benchmark]
-    public Task<int> MediatR_Query()
-        => _mediatR.Send(new MediatRQuery(42));
 }
 
 internal sealed class DispatcherBenchmarkConfig : ManualConfig

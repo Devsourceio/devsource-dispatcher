@@ -60,88 +60,109 @@ The `DevSource.Dispatcher` package is the public entry point and is intended to 
 
 That means consumers do not need to install `DevSource.Dispatcher.Engine` or `DevSource.Dispatcher.SourceGenerator` separately when using the NuGet package.
 
-After installing the package, you can use the library in two ways:
-
-- Runtime mode: register handlers and behaviors yourself, then call `AddDispatcher()`
-- Generated mode: let the source generator emit both `GeneratedDispatcher` and DI registration code, then call `AddGeneratedDispatcher()`
-
-## Quick Start
-
-### Mode 1: Runtime registration
-
-Use this mode when you want explicit control over DI registration, or when you do not want to depend on generated registration code.
-
-```csharp
-using DevSource.Dispatcher.Engine;
-using Microsoft.Extensions.DependencyInjection;
-
-public static class DependencyInjection
-{
-    public static IServiceCollection AddOrderApplication(this IServiceCollection services)
-    {
-        services.AddTransient<ICommandHandler<CreateOrderCommand, Guid>, CreateOrderHandler>();
-        services.AddTransient<IQueryHandler<GetOrderQuery, OrderDto>, GetOrderHandler>();
-        services.AddTransient<INotificationHandler<OrderCreatedNotification>, OrderCreatedHandler>();
-
-        services.AddDispatcher();
-    }
-}
-```
-
-In this mode:
-
-- handler and behavior registration is explicit
-- the dispatcher runtime is registered by `AddDispatcher()`
-- execution still uses the runtime engine with cached delegates and deterministic pipeline ordering
-
-### Mode 2: Generated registration
-
-Use this mode when you want the library to register dispatcher handlers and behaviors automatically without reflection.
-
-When analyzer support is active, the package emits:
-
-- `DevSource.Dispatcher.Generated.GeneratedDispatcher`
-- `DevSource.Dispatcher.Generated.GeneratedServiceCollectionExtensions`
-
-Then you can register everything discovered at compile-time with a single call:
+After installing the package, configure your handlers and register the runtime with:
 
 ```csharp
 using DevSource.Dispatcher.Engine;
 using DevSource.Dispatcher.Generated;
 using Microsoft.Extensions.DependencyInjection;
-
-public static class DependencyInjection
-{
-    public static IServiceCollection AddOrderApplication(this IServiceCollection services)
-    {
-        return services.AddGeneratedDispatcher();
-    }
-}
-```
-
-In this mode, the generated code registers handlers, notifications, pipeline behaviors, and the generated-first dispatcher path without runtime reflection.
-
-Important:
-
-- only dispatcher-related types discovered in the current compilation are auto-registered
-- external infrastructure dependencies still need explicit registration by the application
-- examples: repositories, clocks, database connections, HTTP clients, logging sinks
-
-Example:
-
-```csharp
-using DevSource.Dispatcher.Generated;
-using Microsoft.Extensions.DependencyInjection;
-using Order.Application;
-using Order.Application.Abstractions;
-using Order.Domain;
 
 var services = new ServiceCollection();
 
-services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
-services.AddSingleton<IClock, SystemClock>();
+services.AddTransient<ICommandHandler<CreateOrderCommand, Guid>, CreateOrderHandler>();
+services.AddTransient<IQueryHandler<GetOrderQuery, OrderDto>, GetOrderHandler>();
+services.AddTransient<INotificationHandler<OrderCreatedNotification>, OrderCreatedHandler>();
 
-services.AddGeneratedDispatcher();
+services.AddDispatcher<GeneratedDispatcher>();
+```
+
+## Quick Start
+
+### Register the runtime engine
+
+```csharp
+using DevSource.Dispatcher.Engine;
+using Microsoft.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+
+services.AddTransient<ICommandHandler<CreateOrderCommand, Guid>, CreateOrderHandler>();
+services.AddTransient<IQueryHandler<GetOrderQuery, OrderDto>, GetOrderHandler>();
+services.AddTransient<INotificationHandler<OrderCreatedNotification>, OrderCreatedHandler>();
+
+services.AddDispatcher();
+```
+
+### Register the generated dispatcher path
+
+When the package is installed with analyzer support enabled, a `GeneratedDispatcher` type is emitted in `DevSource.Dispatcher.Generated`.
+
+```csharp
+using DevSource.Dispatcher.Engine;
+using DevSource.Dispatcher.Generated;
+using Microsoft.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+
+services.AddTransient<ICommandHandler<CreateOrderCommand, Guid>, CreateOrderHandler>();
+services.AddTransient<IQueryHandler<GetOrderQuery, OrderDto>, GetOrderHandler>();
+
+services.AddDispatcher<GeneratedDispatcher>();
+```
+
+### Use without DI
+
+You can also use the dispatcher without `IServiceProvider`. In this mode, you provide your own resolver.
+
+```csharp
+using DevSource.Dispatcher.Commands;
+using DevSource.Dispatcher.Engine;
+using DevSource.Dispatcher.Notifications;
+using DevSource.Dispatcher.Queries;
+
+var resolver = new ManualResolver(
+    new CreateOrderHandler(new InMemoryOrderRepository()),
+    new GetOrderHandler(new InMemoryOrderRepository()));
+
+var commandDispatcher = new CommandDispatcher(resolver);
+var queryDispatcher = new QueryDispatcher(resolver);
+var notificationDispatcher = new NotificationDispatcher(resolver);
+var mediator = new DevSource.Dispatcher.Engine.Mediator(commandDispatcher, queryDispatcher, notificationDispatcher);
+
+var orderId = await mediator.SendAsync<CreateOrderCommand, Guid>(new CreateOrderCommand("Ada Lovelace"));
+
+sealed class ManualResolver : IRequestHandlerResolver
+{
+    private readonly ICommandHandler<CreateOrderCommand, Guid> _commandHandler;
+    private readonly IQueryHandler<GetOrderQuery, OrderDto> _queryHandler;
+
+    public ManualResolver(
+        ICommandHandler<CreateOrderCommand, Guid> commandHandler,
+        IQueryHandler<GetOrderQuery, OrderDto> queryHandler)
+    {
+        _commandHandler = commandHandler;
+        _queryHandler = queryHandler;
+    }
+
+    public ICommandHandler<TCommand> GetRequiredCommandHandler<TCommand>() where TCommand : ICommand
+        => throw new NotSupportedException();
+
+    public ICommandHandler<TCommand, TResponse> GetRequiredCommandHandler<TCommand, TResponse>() where TCommand : ICommand<TResponse>
+        => typeof(TCommand) == typeof(CreateOrderCommand) && typeof(TResponse) == typeof(Guid)
+            ? (ICommandHandler<TCommand, TResponse>)_commandHandler
+            : throw new InvalidOperationException($"No handler for {typeof(TCommand).Name}.");
+
+    public IQueryHandler<TQuery, TResponse> GetRequiredQueryHandler<TQuery, TResponse>() where TQuery : IQuery<TResponse>
+        => typeof(TQuery) == typeof(GetOrderQuery) && typeof(TResponse) == typeof(OrderDto)
+            ? (IQueryHandler<TQuery, TResponse>)_queryHandler
+            : throw new InvalidOperationException($"No handler for {typeof(TQuery).Name}.");
+
+    public IEnumerable<IPipelineBehavior<TCommand>> GetCommandBehaviors<TCommand>() where TCommand : ICommand => [];
+
+    public IEnumerable<IPipelineBehavior<TRequest, TResponse>> GetBehaviors<TRequest, TResponse>() where TRequest : notnull => [];
+
+    public IEnumerable<INotificationHandler<TNotification>> GetNotificationHandlers<TNotification>() where TNotification : INotification => [];
+}
 ```
 
 ## Layered Sample
@@ -149,7 +170,7 @@ services.AddGeneratedDispatcher();
 The repository includes a real layered sample under `samples/`:
 
 - `samples/Order.Domain` - domain model and repository abstraction
-- `samples/Order.Application` - commands, queries, notifications, handlers, pipeline behavior, and generated DI registration usage
+- `samples/Order.Application` - commands, queries, notifications, handlers, pipeline behavior, and dispatcher registration
 - `samples/Order.Api` - Minimal API host showing how to wire everything together
 
 Run the sample API with:

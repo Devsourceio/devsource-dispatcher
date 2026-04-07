@@ -4,16 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>$(NoWarn);1591</NoWarn>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
-
-  <PropertyGroup>    
-    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.4" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Order.Application\Order.Application.csproj" />

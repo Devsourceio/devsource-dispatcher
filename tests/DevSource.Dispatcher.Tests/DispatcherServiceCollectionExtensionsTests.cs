@@ -64,7 +64,6 @@ public sealed class DispatcherServiceCollectionExtensionsTests
     public async Task AddDispatcher_WithGeneratedDispatcher_ShouldResolveDispatchersThatExecute()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var services = new ServiceCollection();
         services.AddTransient<DevSource.Dispatcher.Commands.ICommandHandler<TestCommand>, TestCommandHandler>();
@@ -74,9 +73,9 @@ public sealed class DispatcherServiceCollectionExtensionsTests
         var provider = services.BuildServiceProvider();
 
         // Act
-        await provider.GetRequiredService<DevSource.Dispatcher.Commands.ICommandDispatcher>().DispatchAsync(new TestCommand(tracking), cancellationToken);
-        var queryResponse = await provider.GetRequiredService<DevSource.Dispatcher.Queries.IQueryDispatcher>().DispatchAsync<TestQuery, int>(new TestQuery(2, tracking), cancellationToken);
-        await provider.GetRequiredService<DevSource.Dispatcher.Notifications.INotificationDispatcher>().PublishAsync(new TestNotification(tracking), cancellationToken);
+        await provider.GetRequiredService<DevSource.Dispatcher.Commands.ICommandDispatcher>().DispatchAsync(new TestCommand(tracking), TestContext.Current.CancellationToken);
+        var queryResponse = await provider.GetRequiredService<DevSource.Dispatcher.Queries.IQueryDispatcher>().DispatchAsync<TestQuery, int>(new TestQuery(2, tracking), TestContext.Current.CancellationToken);
+        await provider.GetRequiredService<DevSource.Dispatcher.Notifications.INotificationDispatcher>().PublishAsync(new TestNotification(tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(4, queryResponse);

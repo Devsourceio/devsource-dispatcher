@@ -37,13 +37,12 @@ public sealed class NotificationDispatcherTests
     public async Task PublishAsync_ShouldUseGeneratedDispatcherWhenHandled()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var resolver = new Mock<IRequestHandlerResolver>(MockBehavior.Strict);
         var generatedDispatcher = new TestGeneratedDispatcher { HandleNotification = true };
         var dispatcher = new DevSource.Dispatcher.Engine.NotificationDispatcher(resolver.Object, generatedDispatcher);
 
         // Act
-        await dispatcher.PublishAsync(new TestNotification(new TrackingState()), cancellationToken);
+        await dispatcher.PublishAsync(new TestNotification(new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(1, generatedDispatcher.NotificationCalls);
@@ -54,14 +53,13 @@ public sealed class NotificationDispatcherTests
     public async Task PublishAsync_ShouldFallbackToRuntimeHandlers()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
         resolver.RegisterNotificationHandlers(new TestNotificationHandler("one"), new TestNotificationHandler("two"));
         var dispatcher = new DevSource.Dispatcher.Engine.NotificationDispatcher(resolver, new TestGeneratedDispatcher());
 
         // Act
-        await dispatcher.PublishAsync(new TestNotification(tracking), cancellationToken);
+        await dispatcher.PublishAsync(new TestNotification(tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(["notification:one", "notification:two"], tracking.Entries);
@@ -84,14 +82,13 @@ public sealed class NotificationDispatcherTests
     public async Task ServiceProviderConstructor_ShouldPublishThroughRuntimeHandlers()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var services = new ServiceCollection();
         services.AddTransient<DevSource.Dispatcher.Notifications.INotificationHandler<TestNotification>>(_ => new TestNotificationHandler("runtime"));
         var dispatcher = new DevSource.Dispatcher.Engine.NotificationDispatcher(services.BuildServiceProvider());
 
         // Act
-        await dispatcher.PublishAsync(new TestNotification(tracking), cancellationToken);
+        await dispatcher.PublishAsync(new TestNotification(tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(["notification:runtime"], tracking.Entries);
@@ -101,12 +98,11 @@ public sealed class NotificationDispatcherTests
     public async Task UnifiedGeneratedDispatcherConstructor_ShouldUseGeneratedDispatcher()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var generatedDispatcher = new TestGeneratedDispatcher { HandleNotification = true };
         var dispatcher = new DevSource.Dispatcher.Engine.NotificationDispatcher(new StubRequestHandlerResolver(), (DevSource.Dispatcher.Engine.IGeneratedDispatcher)generatedDispatcher);
 
         // Act
-        await dispatcher.PublishAsync(new TestNotification(new TrackingState()), cancellationToken);
+        await dispatcher.PublishAsync(new TestNotification(new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(1, generatedDispatcher.NotificationCalls);
@@ -116,12 +112,11 @@ public sealed class NotificationDispatcherTests
     public async Task ServiceProviderAndUnifiedGeneratedDispatcherConstructor_ShouldUseGeneratedDispatcher()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var generatedDispatcher = new TestGeneratedDispatcher { HandleNotification = true };
         var dispatcher = new DevSource.Dispatcher.Engine.NotificationDispatcher(new ServiceCollection().BuildServiceProvider(), (DevSource.Dispatcher.Engine.IGeneratedDispatcher)generatedDispatcher);
 
         // Act
-        await dispatcher.PublishAsync(new TestNotification(new TrackingState()), cancellationToken);
+        await dispatcher.PublishAsync(new TestNotification(new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(1, generatedDispatcher.NotificationCalls);

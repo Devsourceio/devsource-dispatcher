@@ -40,13 +40,12 @@ public sealed class CommandDispatcherTests
     public async Task DispatchAsync_WithoutResponse_ShouldUseGeneratedDispatcherWhenHandled()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var resolver = new Mock<IRequestHandlerResolver>(MockBehavior.Strict);
         var generatedDispatcher = new TestGeneratedDispatcher { HandleCommandWithoutResponse = true };
         var dispatcher = new DevSource.Dispatcher.Engine.CommandDispatcher(resolver.Object, generatedDispatcher);
 
         // Act
-        await dispatcher.DispatchAsync(new TestCommand(new TrackingState()), cancellationToken);
+        await dispatcher.DispatchAsync(new TestCommand(new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(1, generatedDispatcher.CommandWithoutResponseCalls);
@@ -57,7 +56,6 @@ public sealed class CommandDispatcherTests
     public async Task DispatchAsync_WithoutResponse_ShouldFallbackToRuntimePipeline()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var resolver = new StubRequestHandlerResolver();
         var tracking = new TrackingState();
         var generatedDispatcher = new TestGeneratedDispatcher();
@@ -66,7 +64,7 @@ public sealed class CommandDispatcherTests
         var dispatcher = new DevSource.Dispatcher.Engine.CommandDispatcher(resolver, generatedDispatcher);
 
         // Act
-        await dispatcher.DispatchAsync(new TestCommand(tracking), cancellationToken);
+        await dispatcher.DispatchAsync(new TestCommand(tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(1, generatedDispatcher.CommandWithoutResponseCalls);
@@ -77,13 +75,12 @@ public sealed class CommandDispatcherTests
     public async Task DispatchAsync_WithResponse_ShouldUseGeneratedDispatcherWhenHandled()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var resolver = new Mock<IRequestHandlerResolver>(MockBehavior.Strict);
         var generatedDispatcher = new TestGeneratedDispatcher { HandleCommandWithResponse = true };
         var dispatcher = new DevSource.Dispatcher.Engine.CommandDispatcher(resolver.Object, generatedDispatcher);
 
         // Act
-        var response = await dispatcher.DispatchAsync<TestCommandWithResponse, string>(new TestCommandWithResponse(_faker.Random.Word(), new TrackingState()), cancellationToken);
+        var response = await dispatcher.DispatchAsync<TestCommandWithResponse, string>(new TestCommandWithResponse(_faker.Random.Word(), new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal("generated-response", response);
@@ -95,7 +92,6 @@ public sealed class CommandDispatcherTests
     public async Task DispatchAsync_WithResponse_ShouldFallbackToRuntimePipeline()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var value = _faker.Random.Word();
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
@@ -104,7 +100,7 @@ public sealed class CommandDispatcherTests
         var dispatcher = new DevSource.Dispatcher.Engine.CommandDispatcher(resolver, new TestGeneratedDispatcher());
 
         // Act
-        var response = await dispatcher.DispatchAsync<TestCommandWithResponse, string>(new TestCommandWithResponse(value, tracking), cancellationToken);
+        var response = await dispatcher.DispatchAsync<TestCommandWithResponse, string>(new TestCommandWithResponse(value, tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal($"handled:{value}", response);
@@ -141,7 +137,6 @@ public sealed class CommandDispatcherTests
     public async Task ServiceProviderConstructor_ShouldDispatchThroughRuntimePipeline()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var services = new ServiceCollection();
         services.AddTransient<DevSource.Dispatcher.Commands.ICommandHandler<TestCommand>, TestCommandHandler>();
@@ -149,7 +144,7 @@ public sealed class CommandDispatcherTests
         var dispatcher = new DevSource.Dispatcher.Engine.CommandDispatcher(services.BuildServiceProvider());
 
         // Act
-        await dispatcher.DispatchAsync(new TestCommand(tracking), cancellationToken);
+        await dispatcher.DispatchAsync(new TestCommand(tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(["before:runtime", "handler:command", "after:runtime"], tracking.Entries);
@@ -159,12 +154,11 @@ public sealed class CommandDispatcherTests
     public async Task UnifiedGeneratedDispatcherConstructor_ShouldUseGeneratedDispatcher()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var generatedDispatcher = new TestGeneratedDispatcher { HandleCommandWithoutResponse = true };
         var dispatcher = new DevSource.Dispatcher.Engine.CommandDispatcher(new StubRequestHandlerResolver(), (DevSource.Dispatcher.Engine.IGeneratedDispatcher)generatedDispatcher);
 
         // Act
-        await dispatcher.DispatchAsync(new TestCommand(new TrackingState()), cancellationToken);
+        await dispatcher.DispatchAsync(new TestCommand(new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(1, generatedDispatcher.CommandWithoutResponseCalls);
@@ -174,12 +168,11 @@ public sealed class CommandDispatcherTests
     public async Task ServiceProviderAndUnifiedGeneratedDispatcherConstructor_ShouldUseGeneratedDispatcher()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var generatedDispatcher = new TestGeneratedDispatcher { HandleCommandWithoutResponse = true };
         var dispatcher = new DevSource.Dispatcher.Engine.CommandDispatcher(new ServiceCollection().BuildServiceProvider(), (DevSource.Dispatcher.Engine.IGeneratedDispatcher)generatedDispatcher);
 
         // Act
-        await dispatcher.DispatchAsync(new TestCommand(new TrackingState()), cancellationToken);
+        await dispatcher.DispatchAsync(new TestCommand(new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(1, generatedDispatcher.CommandWithoutResponseCalls);

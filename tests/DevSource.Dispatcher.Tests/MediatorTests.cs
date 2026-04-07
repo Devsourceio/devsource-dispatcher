@@ -28,7 +28,6 @@ public sealed class MediatorTests
     public async Task Methods_ShouldDelegateToUnderlyingDispatchers()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var commandDispatcher = new Mock<DevSource.Dispatcher.Commands.ICommandDispatcher>();
         var queryDispatcher = new Mock<DevSource.Dispatcher.Queries.IQueryDispatcher>();
         var notificationDispatcher = new Mock<DevSource.Dispatcher.Notifications.INotificationDispatcher>();
@@ -43,10 +42,10 @@ public sealed class MediatorTests
         var mediator = new DevSource.Dispatcher.Engine.Mediator(commandDispatcher.Object, queryDispatcher.Object, notificationDispatcher.Object);
 
         // Act
-        await mediator.SendAsync(command, cancellationToken);
-        var commandResponse = await mediator.SendAsync<TestCommandWithResponse, string>(responseCommand, cancellationToken);
-        var queryResponse = await mediator.QueryAsync<TestQuery, int>(query, cancellationToken);
-        await mediator.PublishAsync(notification, cancellationToken);
+        await mediator.SendAsync(command, TestContext.Current.CancellationToken);
+        var commandResponse = await mediator.SendAsync<TestCommandWithResponse, string>(responseCommand, TestContext.Current.CancellationToken);
+        var queryResponse = await mediator.QueryAsync<TestQuery, int>(query, TestContext.Current.CancellationToken);
+        await mediator.PublishAsync(notification, TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal("ok", commandResponse);

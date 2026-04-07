@@ -40,13 +40,12 @@ public sealed class QueryDispatcherTests
     public async Task DispatchAsync_ShouldUseGeneratedDispatcherWhenHandled()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var resolver = new Mock<IRequestHandlerResolver>(MockBehavior.Strict);
         var generatedDispatcher = new TestGeneratedDispatcher { HandleQuery = true };
         var dispatcher = new DevSource.Dispatcher.Engine.QueryDispatcher(resolver.Object, generatedDispatcher);
 
         // Act
-        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(_faker.Random.Int(), new TrackingState()), cancellationToken);
+        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(_faker.Random.Int(), new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(123, response);
@@ -58,7 +57,6 @@ public sealed class QueryDispatcherTests
     public async Task DispatchAsync_ShouldFallbackToRuntimePipeline()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
         resolver.RegisterQueryHandler(new TestQueryHandler());
@@ -66,7 +64,7 @@ public sealed class QueryDispatcherTests
         var dispatcher = new DevSource.Dispatcher.Engine.QueryDispatcher(resolver, new TestGeneratedDispatcher());
 
         // Act
-        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(21, tracking), cancellationToken);
+        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(21, tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(42, response);
@@ -90,7 +88,6 @@ public sealed class QueryDispatcherTests
     public async Task ServiceProviderConstructor_ShouldDispatchThroughRuntimePipeline()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var services = new ServiceCollection();
         services.AddTransient<DevSource.Dispatcher.Queries.IQueryHandler<TestQuery, int>, TestQueryHandler>();
@@ -98,7 +95,7 @@ public sealed class QueryDispatcherTests
         var dispatcher = new DevSource.Dispatcher.Engine.QueryDispatcher(services.BuildServiceProvider());
 
         // Act
-        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(7, tracking), cancellationToken);
+        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(7, tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(14, response);
@@ -109,12 +106,11 @@ public sealed class QueryDispatcherTests
     public async Task UnifiedGeneratedDispatcherConstructor_ShouldUseGeneratedDispatcher()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var generatedDispatcher = new TestGeneratedDispatcher { HandleQuery = true };
         var dispatcher = new DevSource.Dispatcher.Engine.QueryDispatcher(new StubRequestHandlerResolver(), (DevSource.Dispatcher.Engine.IGeneratedDispatcher)generatedDispatcher);
 
         // Act
-        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(_faker.Random.Int(), new TrackingState()), cancellationToken);
+        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(_faker.Random.Int(), new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(123, response);
@@ -125,12 +121,11 @@ public sealed class QueryDispatcherTests
     public async Task ServiceProviderAndUnifiedGeneratedDispatcherConstructor_ShouldUseGeneratedDispatcher()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var generatedDispatcher = new TestGeneratedDispatcher { HandleQuery = true };
         var dispatcher = new DevSource.Dispatcher.Engine.QueryDispatcher(new ServiceCollection().BuildServiceProvider(), (DevSource.Dispatcher.Engine.IGeneratedDispatcher)generatedDispatcher);
 
         // Act
-        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(_faker.Random.Int(), new TrackingState()), cancellationToken);
+        var response = await dispatcher.DispatchAsync<TestQuery, int>(new TestQuery(_faker.Random.Int(), new TrackingState()), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal(123, response);

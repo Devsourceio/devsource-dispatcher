@@ -6,9 +6,6 @@
 # dotenv files
 .env
 
-# AI
-.ai/
-AGENT.md
 
 # User-specific files
 *.rsuser

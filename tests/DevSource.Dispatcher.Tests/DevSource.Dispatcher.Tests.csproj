@@ -1,11 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,23 +15,20 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.NET.Test.Sdk"  />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Moq" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Moq" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\DevSource.Dispatcher\DevSource.Dispatcher.csproj" />
+    <ProjectReference Include="..\..\src\DevSource.Dispatcher\DevSource.Dispatcher.csproj" AdditionalProperties="GeneratePackageOnBuild=false" />
     <ProjectReference Include="..\..\src\DevSource.Dispatcher.Engine\DevSource.Dispatcher.Engine.csproj" />
+    <ProjectReference Include="..\..\src\DevSource.Dispatcher.SourceGenerator\DevSource.Dispatcher.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

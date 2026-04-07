@@ -9,14 +9,13 @@ public sealed class EngineInternalsTests
     public async Task CommandDispatchCache_ShouldExecuteHandlerAndOrderedBehaviors()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
         resolver.RegisterCommandHandler(new TestCommandHandler());
         resolver.RegisterCommandBehaviors(new OrderedCommandBehavior(2, "two"), new OrderedCommandBehavior(1, "one"));
 
         // Act
-        await CommandDispatchCache<TestCommand>.ExecuteAsync(resolver, new TestCommand(tracking), cancellationToken);
+        await CommandDispatchCache<TestCommand>.ExecuteAsync(resolver, new TestCommand(tracking), CancellationToken.None);
 
         // Asserts
         Assert.Equal(["before:one", "before:two", "handler:command", "after:two", "after:one"], tracking.Entries);
@@ -26,14 +25,13 @@ public sealed class EngineInternalsTests
     public async Task CommandDispatchCacheWithResponse_ShouldExecuteHandlerAndOrderedBehaviors()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
         resolver.RegisterCommandHandler(new TestCommandWithResponseHandler());
         resolver.RegisterBehaviors(new OrderedResponseBehavior(2, "two"), new OrderedResponseBehavior(1, "one"));
 
         // Act
-        var response = await CommandDispatchCache<TestCommandWithResponse, string>.ExecuteAsync(resolver, new TestCommandWithResponse("value", tracking), cancellationToken);
+        var response = await CommandDispatchCache<TestCommandWithResponse, string>.ExecuteAsync(resolver, new TestCommandWithResponse("value", tracking), CancellationToken.None);
 
         // Asserts
         Assert.Equal("handled:value", response);
@@ -44,14 +42,13 @@ public sealed class EngineInternalsTests
     public async Task QueryDispatchCache_ShouldExecuteHandlerAndOrderedBehaviors()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
         resolver.RegisterQueryHandler(new TestQueryHandler());
         resolver.RegisterBehaviors(new OrderedQueryBehavior(2, "two"), new OrderedQueryBehavior(1, "one"));
 
         // Act
-        var response = await QueryDispatchCache<TestQuery, int>.ExecuteAsync(resolver, new TestQuery(10, tracking), cancellationToken);
+        var response = await QueryDispatchCache<TestQuery, int>.ExecuteAsync(resolver, new TestQuery(10, tracking), CancellationToken.None);
 
         // Asserts
         Assert.Equal(20, response);
@@ -62,13 +59,12 @@ public sealed class EngineInternalsTests
     public async Task NotificationDispatchCache_ShouldExecuteAllHandlers()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
         resolver.RegisterNotificationHandlers(new TestNotificationHandler("one"), new TestNotificationHandler("two"));
 
         // Act
-        await NotificationDispatchCache<TestNotification>.ExecuteAsync(resolver, new TestNotification(tracking), cancellationToken);
+        await NotificationDispatchCache<TestNotification>.ExecuteAsync(resolver, new TestNotification(tracking), CancellationToken.None);
 
         // Asserts
         Assert.Equal(["notification:one", "notification:two"], tracking.Entries);
@@ -91,7 +87,6 @@ public sealed class EngineInternalsTests
     public async Task GeneratedDispatchExecutor_ShouldRouteToCaches()
     {
         // Arrange
-        var cancellationToken = TestContext.Current.CancellationToken;
         var tracking = new TrackingState();
         var resolver = new StubRequestHandlerResolver();
         resolver.RegisterCommandHandler(new TestCommandHandler());
@@ -100,10 +95,10 @@ public sealed class EngineInternalsTests
         resolver.RegisterNotificationHandlers(new TestNotificationHandler("one"));
 
         // Act
-        await GeneratedDispatchExecutor.ExecuteCommandAsync(resolver, new TestCommand(tracking), cancellationToken);
-        var commandResponse = await GeneratedDispatchExecutor.ExecuteCommandAsync<TestCommandWithResponse, string>(resolver, new TestCommandWithResponse("x", tracking), cancellationToken);
-        var queryResponse = await GeneratedDispatchExecutor.ExecuteQueryAsync<TestQuery, int>(resolver, new TestQuery(4, tracking), cancellationToken);
-        await GeneratedDispatchExecutor.PublishNotificationAsync(resolver, new TestNotification(tracking), cancellationToken);
+        await GeneratedDispatchExecutor.ExecuteCommandAsync(resolver, new TestCommand(tracking), TestContext.Current.CancellationToken);
+        var commandResponse = await GeneratedDispatchExecutor.ExecuteCommandAsync<TestCommandWithResponse, string>(resolver, new TestCommandWithResponse("x", tracking), TestContext.Current.CancellationToken);
+        var queryResponse = await GeneratedDispatchExecutor.ExecuteQueryAsync<TestQuery, int>(resolver, new TestQuery(4, tracking), TestContext.Current.CancellationToken);
+        await GeneratedDispatchExecutor.PublishNotificationAsync(resolver, new TestNotification(tracking), TestContext.Current.CancellationToken);
 
         // Asserts
         Assert.Equal("handled:x", commandResponse);
