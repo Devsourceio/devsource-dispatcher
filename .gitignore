@@ -3,8 +3,12 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# dotenv files
+# dotenv and nupkg files
 .env
+.nupkg
+.nupkg.*
+*.nupkg.*
+Nuget.Config
 
 # User-specific files
 *.rsuser
@@ -474,6 +478,7 @@ $RECYCLE.BIN/
 *.msix
 *.msm
 *.msp
+*.dll
 
 # Windows shortcuts
 *.lnk
