@@ -60,7 +60,7 @@ The `DevSource.Dispatcher` package is the public entry point and is intended to 
 
 That means consumers do not need to install `DevSource.Dispatcher.Engine` or `DevSource.Dispatcher.SourceGenerator` separately when using the NuGet package.
 
-After installing the package, configure your handlers and register the runtime with:
+After installing the package, you can register the dispatcher with a single discovery call:
 
 ```csharp
 using DevSource.Dispatcher.Engine;
@@ -69,16 +69,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 var services = new ServiceCollection();
 
-services.AddTransient<ICommandHandler<CreateOrderCommand, Guid>, CreateOrderHandler>();
-services.AddTransient<IQueryHandler<GetOrderQuery, OrderDto>, GetOrderHandler>();
-services.AddTransient<INotificationHandler<OrderCreatedNotification>, OrderCreatedHandler>();
-
-services.AddDispatcher<GeneratedDispatcher>();
+services.AddDispatcherDiscovery();
 ```
 
 ## Quick Start
 
-### Register the runtime engine
+### Register the runtime engine with discovery
 
 ```csharp
 using DevSource.Dispatcher.Engine;
@@ -86,16 +82,23 @@ using Microsoft.Extensions.DependencyInjection;
 
 var services = new ServiceCollection();
 
-services.AddTransient<ICommandHandler<CreateOrderCommand, Guid>, CreateOrderHandler>();
-services.AddTransient<IQueryHandler<GetOrderQuery, OrderDto>, GetOrderHandler>();
-services.AddTransient<INotificationHandler<OrderCreatedNotification>, OrderCreatedHandler>();
-
-services.AddDispatcher();
+services.AddDispatcherDiscovery();
 ```
 
-### Register the generated dispatcher path
+When the package is installed with analyzer support enabled, a `GeneratedDispatcher` type is emitted in `DevSource.Dispatcher.Generated` and `AddDispatcherDiscovery()` wires it automatically when found.
 
-When the package is installed with analyzer support enabled, a `GeneratedDispatcher` type is emitted in `DevSource.Dispatcher.Generated`.
+```csharp
+using DevSource.Dispatcher.Engine;
+using Microsoft.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+
+services.AddDispatcherDiscovery();
+```
+
+### Keep explicit registrations if you prefer
+
+If you want full control over DI registrations, the explicit style remains supported:
 
 ```csharp
 using DevSource.Dispatcher.Engine;
@@ -106,8 +109,18 @@ var services = new ServiceCollection();
 
 services.AddTransient<ICommandHandler<CreateOrderCommand, Guid>, CreateOrderHandler>();
 services.AddTransient<IQueryHandler<GetOrderQuery, OrderDto>, GetOrderHandler>();
+services.AddTransient<INotificationHandler<OrderCreatedNotification>, OrderCreatedHandler>();
 
 services.AddDispatcher<GeneratedDispatcher>();
+```
+
+### Register a specific assembly explicitly
+
+If you prefer explicit assembly targeting instead of automatic discovery, the scan-based overloads remain available:
+
+```csharp
+services.AddDispatcherFromAssemblyContaining<CreateOrderHandler>();
+services.AddDispatcherFromAssemblyContaining<CreateOrderHandler, GeneratedDispatcher>();
 ```
 
 ### Use without DI
@@ -170,8 +183,19 @@ sealed class ManualResolver : IRequestHandlerResolver
 The repository includes a real layered sample under `samples/`:
 
 - `samples/Order.Domain` - domain model and repository abstraction
-- `samples/Order.Application` - commands, queries, notifications, handlers, pipeline behavior, and dispatcher registration
-- `samples/Order.Api` - Minimal API host showing how to wire everything together
+- `samples/Order.Application` - commands, queries, DTOs, and handlers discovered automatically
+- `samples/Order.Infrastructure` - repository implementation and infrastructure registrations
+- `samples/Order.Api` - Minimal API host using only `services.AddDispatcherDiscovery()`
+
+The sample intentionally consumes the library from a local NuGet package instead of `ProjectReference` entries to `src/`, so it stays close to a real consumer application.
+
+Build the library artifacts first:
+
+```bash
+dotnet build src/DevSource.Dispatcher/DevSource.Dispatcher.csproj -c Release
+```
+
+That build writes the `.nupkg` used by `samples/NuGet.Config` into `src/DevSource.Dispatcher/bin/Release`.
 
 Run the sample API with:
 
@@ -294,7 +318,8 @@ dotnet test tests/DevSource.Dispatcher.Tests/DevSource.Dispatcher.Tests.csproj
 To validate the sample application build as well:
 
 ```bash
-dotnet build samples/Order.Api/Order.Api.csproj
+dotnet build src/DevSource.Dispatcher/DevSource.Dispatcher.csproj -c Release
+dotnet build samples/Order.slnx -c Release
 ```
 
 The project currently uses:

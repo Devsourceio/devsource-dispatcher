@@ -214,6 +214,10 @@ internal sealed class TestGeneratedDispatcher : IGeneratedDispatcher
 
 internal sealed class SampleGeneratedDispatcher : IGeneratedDispatcher
 {
+    public SampleGeneratedDispatcher(DevSource.Dispatcher.Engine.IRequestHandlerResolver handlerResolver)
+    {
+    }
+
     ValueTask<bool> IGeneratedCommandDispatcher.TryDispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken)
         => ValueTask.FromResult(false);
 

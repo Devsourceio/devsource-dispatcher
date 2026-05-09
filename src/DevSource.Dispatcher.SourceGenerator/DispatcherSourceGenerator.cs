@@ -62,6 +62,11 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
     builder.AppendLine("using DevSource.Dispatcher.Notifications;");
     builder.AppendLine("using DevSource.Dispatcher.Queries;");
     builder.AppendLine();
+    if (model.HasHandlers)
+    {
+      builder.AppendLine("[assembly: DevSource.Dispatcher.DispatcherAssemblyAttribute]");
+      builder.AppendLine();
+    }
     builder.AppendLine("namespace DevSource.Dispatcher.Generated;");
     builder.AppendLine();
     builder.AppendLine("public sealed class GeneratedDispatcher : IGeneratedDispatcher");
@@ -205,6 +210,9 @@ internal sealed class DispatcherGenerationModel
   public ImmutableArray<RequestWithResponseModel> QueryRequests { get; }
 
   public ImmutableArray<string> NotificationRequests { get; }
+
+  public bool HasHandlers
+      => !CommandRequests.IsEmpty || !CommandRequestsWithResponse.IsEmpty || !QueryRequests.IsEmpty || !NotificationRequests.IsEmpty;
 
   public static DispatcherGenerationModel Create(Compilation compilation, ImmutableArray<INamedTypeSymbol?> candidateTypes)
   {
