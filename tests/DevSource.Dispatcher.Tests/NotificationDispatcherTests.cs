@@ -95,6 +95,40 @@ public sealed class NotificationDispatcherTests
     }
 
     [Fact]
+    public async Task PublishAsyncWithResponse_ShouldInvokeAllHandlersAndReturnLastResult()
+    {
+        // Arrange
+        var tracking = new TrackingState();
+        var resolver = new StubRequestHandlerResolver();
+        resolver.RegisterNotificationHandlers(
+            new TestNotificationWithResponseHandler("one"),
+            new TestNotificationWithResponseHandler("two"));
+        var dispatcher = new DevSource.Dispatcher.Engine.NotificationDispatcher(resolver);
+
+        // Act
+        var result = await dispatcher.PublishAsync<TestNotificationWithResponse, string>(
+            new TestNotificationWithResponse(tracking),
+            TestContext.Current.CancellationToken);
+
+        // Asserts
+        Assert.Equal("handled:two", result);
+        Assert.Equal(["notification-response:one", "notification-response:two"], tracking.Entries);
+    }
+
+    [Fact]
+    public async Task PublishAsyncWithResponse_WhenNotificationIsNull_ShouldThrow()
+    {
+        // Arrange
+        var dispatcher = new DevSource.Dispatcher.Engine.NotificationDispatcher(new StubRequestHandlerResolver());
+
+        // Act
+        Task ActAsync() => dispatcher.PublishAsync<TestNotificationWithResponse, string>(null!).AsTask();
+
+        // Asserts
+        await Assert.ThrowsAsync<ArgumentNullException>(ActAsync);
+    }
+
+    [Fact]
     public async Task UnifiedGeneratedDispatcherConstructor_ShouldUseGeneratedDispatcher()
     {
         // Arrange

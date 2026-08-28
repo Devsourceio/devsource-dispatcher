@@ -35,4 +35,9 @@ public class Mediator(
     public async ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : INotification
         => await _notificationDispatcher.PublishAsync(notification, cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc />
+    public async ValueTask<TResponse> PublishAsync<TNotification, TResponse>(TNotification notification, CancellationToken cancellationToken = default)
+        where TNotification : INotification<TResponse>
+        => await _notificationDispatcher.PublishAsync<TNotification, TResponse>(notification, cancellationToken).ConfigureAwait(false);
 }

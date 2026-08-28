@@ -58,4 +58,17 @@ public class NotificationDispatcher : INotificationDispatcher
 
         await NotificationDispatchCache<TNotification>.ExecuteAsync(_handlerResolver, notification, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <inheritdoc />
+    public ValueTask<TResult> PublishAsync<TNotification, TResult>(TNotification notification, CancellationToken cancellationToken = default)
+        where TNotification : INotification<TResult>
+    {
+        if (notification is null)
+            throw new ArgumentNullException(nameof(notification));
+
+        return NotificationDispatchCache<TNotification, TResult>.ExecuteAsync(
+            _handlerResolver,
+            notification,
+            cancellationToken);
+    }
 }

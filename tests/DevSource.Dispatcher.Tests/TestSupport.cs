@@ -13,6 +13,8 @@ internal sealed record TestQuery(int Value, TrackingState TrackingState) : IQuer
 
 internal sealed record TestNotification(TrackingState TrackingState) : INotification;
 
+internal sealed record TestNotificationWithResponse(TrackingState TrackingState) : INotification<string>;
+
 internal sealed class TrackingState
 {
     private readonly List<string> _entries = [];
@@ -55,6 +57,15 @@ internal sealed class TestNotificationHandler(string name) : INotificationHandle
     {
         notification.TrackingState.Add($"notification:{name}");
         return ValueTask.CompletedTask;
+    }
+}
+
+internal sealed class TestNotificationWithResponseHandler(string name) : INotificationHandler<TestNotificationWithResponse, string>
+{
+    public ValueTask<string> HandleAsync(TestNotificationWithResponse notification, CancellationToken cancellationToken = default)
+    {
+        notification.TrackingState.Add($"notification-response:{name}");
+        return ValueTask.FromResult($"handled:{name}");
     }
 }
 
@@ -138,6 +149,10 @@ internal sealed class StubRequestHandlerResolver : IRequestHandlerResolver
     public void RegisterNotificationHandlers<TNotification>(params INotificationHandler<TNotification>[] handlers) where TNotification : INotification
         => _notificationHandlers[typeof(INotificationHandler<TNotification>)] = handlers;
 
+    public void RegisterNotificationHandlers<TNotification, TResult>(params INotificationHandler<TNotification, TResult>[] handlers)
+        where TNotification : INotification<TResult>
+        => _notificationHandlers[typeof(INotificationHandler<TNotification, TResult>)] = handlers;
+
     public ICommandHandler<TCommand> GetRequiredCommandHandler<TCommand>() where TCommand : ICommand
         => (ICommandHandler<TCommand>)_handlers[typeof(ICommandHandler<TCommand>)];
 
@@ -160,6 +175,12 @@ internal sealed class StubRequestHandlerResolver : IRequestHandlerResolver
     public IEnumerable<INotificationHandler<TNotification>> GetNotificationHandlers<TNotification>() where TNotification : INotification
         => _notificationHandlers.TryGetValue(typeof(INotificationHandler<TNotification>), out var value)
             ? (IEnumerable<INotificationHandler<TNotification>>)value
+            : [];
+
+    public IEnumerable<INotificationHandler<TNotification, TResult>> GetNotificationHandlers<TNotification, TResult>()
+        where TNotification : INotification<TResult>
+        => _notificationHandlers.TryGetValue(typeof(INotificationHandler<TNotification, TResult>), out var value)
+            ? (IEnumerable<INotificationHandler<TNotification, TResult>>)value
             : [];
 }
 

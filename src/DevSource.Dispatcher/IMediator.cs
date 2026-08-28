@@ -45,4 +45,15 @@ public interface IMediator
     /// <param name="cancellationToken">The token used to cancel execution.</param>
     ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : INotification;
+
+    /// <summary>
+    /// Publishes a notification to all registered notification handlers asynchronously.
+    /// </summary>
+    /// <typeparam name="TNotification">The type of the notification to publish.</typeparam>
+    /// <typeparam name="TResponse">The type of the response returned by the notification.</typeparam>
+    /// <param name="notification">The notification instance to publish.</param>
+    /// <param name="cancellationToken">The token used to cancel the publishing operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    ValueTask<TResponse> PublishAsync<TNotification, TResponse>(TNotification notification, CancellationToken cancellationToken = default)
+        where TNotification : INotification<TResponse>;
 }

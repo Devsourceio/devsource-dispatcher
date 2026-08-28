@@ -44,4 +44,15 @@ public interface IRequestHandlerResolver
     /// </summary>
     IEnumerable<INotificationHandler<TNotification>> GetNotificationHandlers<TNotification>()
         where TNotification : INotification;
+
+    /// <summary>
+    /// Resolves all notification handlers that produce a response.
+    /// </summary>
+    /// <typeparam name="TNotification">The notification type.</typeparam>
+    /// <typeparam name="TResult">The response type.</typeparam>
+    /// <returns>The handlers registered for the notification and response types.</returns>
+    IEnumerable<INotificationHandler<TNotification, TResult>> GetNotificationHandlers<TNotification, TResult>()
+        where TNotification : INotification<TResult>
+        => throw new NotSupportedException(
+            $"The resolver does not support response notifications of type {typeof(TNotification).Name}.");
 }

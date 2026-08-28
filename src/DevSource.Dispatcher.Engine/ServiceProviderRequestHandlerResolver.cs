@@ -44,4 +44,9 @@ public sealed class ServiceProviderRequestHandlerResolver(IServiceProvider servi
     public IEnumerable<INotificationHandler<TNotification>> GetNotificationHandlers<TNotification>()
         where TNotification : INotification
         => _serviceProvider.GetServices<INotificationHandler<TNotification>>();
+
+    /// <inheritdoc />
+    public IEnumerable<INotificationHandler<TNotification, TResult>> GetNotificationHandlers<TNotification, TResult>()
+        where TNotification : INotification<TResult>
+        => _serviceProvider.GetServices<INotificationHandler<TNotification, TResult>>();
 }
