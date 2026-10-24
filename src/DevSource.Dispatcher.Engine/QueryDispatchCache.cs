@@ -12,6 +12,9 @@ internal static class QueryDispatchCache<TQuery, TResponse>
         var handler = handlerResolver.GetRequiredQueryHandler<TQuery, TResponse>();
         var behaviors = PipelineBehaviorOrderer.Order(handlerResolver.GetBehaviors<TQuery, TResponse>());
 
+        if (behaviors.Count == 0)
+            return handler.HandleAsync(query, cancellationToken);
+
         return InvokeAsync(behaviors, handler, query, cancellationToken, 0);
     }
 

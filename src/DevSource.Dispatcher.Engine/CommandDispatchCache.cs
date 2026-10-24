@@ -40,7 +40,10 @@ internal static class CommandDispatchCache<TCommand>
         var handler = handlerResolver.GetRequiredCommandHandler<TCommand>();
         var behaviors = PipelineBehaviorOrderer.Order(handlerResolver.GetCommandBehaviors<TCommand>());
 
-        return InvokeAsync(behaviors, handler, command,  0, cancellationToken);
+        if (behaviors.Count == 0)
+            return handler.HandleAsync(command, cancellationToken);
+
+        return InvokeAsync(behaviors, handler, command, 0, cancellationToken);
     }
 
     /// <summary>
@@ -131,7 +134,10 @@ internal static class CommandDispatchCache<TCommand, TResponse> where TCommand :
         var handler = handlerResolver.GetRequiredCommandHandler<TCommand, TResponse>();
         var behaviors = PipelineBehaviorOrderer.Order(handlerResolver.GetBehaviors<TCommand, TResponse>());
 
-        return InvokeAsync(behaviors, handler, command,  0, cancellationToken);
+        if (behaviors.Count == 0)
+            return handler.HandleAsync(command, cancellationToken);
+
+        return InvokeAsync(behaviors, handler, command, 0, cancellationToken);
     }
 
     /// <summary>

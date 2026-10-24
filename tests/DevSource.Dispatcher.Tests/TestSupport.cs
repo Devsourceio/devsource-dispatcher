@@ -186,6 +186,20 @@ internal sealed class StubRequestHandlerResolver : IRequestHandlerResolver
 
 internal sealed class TestGeneratedDispatcher : IGeneratedDispatcher
 {
+    public bool RunAsynchronously { get; set; }
+
+    public bool Fault { get; set; }
+
+    private ValueTask<T> Complete<T>(T value)
+        => Fault ? ValueTask.FromException<T>(new InvalidOperationException("generated-fault"))
+            : RunAsynchronously ? Yielded(value) : ValueTask.FromResult(value);
+
+    private static async ValueTask<T> Yielded<T>(T value)
+    {
+        await Task.Yield();
+        return value;
+    }
+
     public bool HandleCommandWithoutResponse { get; set; }
 
     public bool HandleCommandWithResponse { get; set; }
@@ -205,31 +219,31 @@ internal sealed class TestGeneratedDispatcher : IGeneratedDispatcher
     ValueTask<bool> IGeneratedCommandDispatcher.TryDispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken)
     {
         CommandWithoutResponseCalls++;
-        return ValueTask.FromResult(HandleCommandWithoutResponse);
+        return Complete(HandleCommandWithoutResponse);
     }
 
     ValueTask<DispatchResult<TResponse>> IGeneratedCommandDispatcher.TryDispatchAsync<TCommand, TResponse>(TCommand command, CancellationToken cancellationToken)
     {
         CommandWithResponseCalls++;
         if (HandleCommandWithResponse)
-            return ValueTask.FromResult(DispatchResult<TResponse>.Handled((TResponse)(object)"generated-response"));
+            return Complete(DispatchResult<TResponse>.Handled((TResponse)(object)"generated-response"));
 
-        return ValueTask.FromResult(DispatchResult<TResponse>.NotHandled());
+        return Complete(DispatchResult<TResponse>.NotHandled());
     }
 
     ValueTask<DispatchResult<TResponse>> IGeneratedQueryDispatcher.TryDispatchAsync<TQuery, TResponse>(TQuery query, CancellationToken cancellationToken)
     {
         QueryCalls++;
         if (HandleQuery)
-            return ValueTask.FromResult(DispatchResult<TResponse>.Handled((TResponse)(object)123));
+            return Complete(DispatchResult<TResponse>.Handled((TResponse)(object)123));
 
-        return ValueTask.FromResult(DispatchResult<TResponse>.NotHandled());
+        return Complete(DispatchResult<TResponse>.NotHandled());
     }
 
     ValueTask<bool> IGeneratedNotificationDispatcher.TryPublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken)
     {
         NotificationCalls++;
-        return ValueTask.FromResult(HandleNotification);
+        return Complete(HandleNotification);
     }
 }
 

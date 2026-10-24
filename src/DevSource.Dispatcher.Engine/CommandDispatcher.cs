@@ -44,35 +44,60 @@ public class CommandDispatcher : ICommandDispatcher
     }
 
     /// <inheritdoc />
-    public async ValueTask DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+    public ValueTask DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
         where TCommand : ICommand
     {
         if (command is null)
             throw new ArgumentNullException(nameof(command));
 
-        if (_generatedDispatcher is not null)
-        {
-            var wasHandled = await _generatedDispatcher.TryDispatchAsync(command, cancellationToken).ConfigureAwait(false);
-            if (wasHandled)
-                return;
-        }
+        if (_generatedDispatcher is null)
+            return CommandDispatchCache<TCommand>.ExecuteAsync(_handlerResolver, command, cancellationToken);
 
-        await CommandDispatchCache<TCommand>.ExecuteAsync(_handlerResolver, command, cancellationToken).ConfigureAwait(false);
+        var generated = _generatedDispatcher.TryDispatchAsync(command, cancellationToken);
+        if (!generated.IsCompletedSuccessfully)
+            return DispatchAfterGeneratedAsync(generated, command, cancellationToken);
+
+        return generated.Result
+            ? ValueTask.CompletedTask
+            : CommandDispatchCache<TCommand>.ExecuteAsync(_handlerResolver, command, cancellationToken);
     }
 
     /// <inheritdoc />
-    public async ValueTask<TResponse> DispatchAsync<TCommand, TResponse>(TCommand command,
+    public ValueTask<TResponse> DispatchAsync<TCommand, TResponse>(TCommand command,
         CancellationToken cancellationToken = default) where TCommand : ICommand<TResponse>
     {
         if (command is null)
             throw new ArgumentNullException(nameof(command));
 
-        if (_generatedDispatcher is not null)
-        {
-            var generatedResult = await _generatedDispatcher.TryDispatchAsync<TCommand, TResponse>(command, cancellationToken).ConfigureAwait(false);
-            if (generatedResult.WasHandled)
-                return generatedResult.Response;
-        }
+        if (_generatedDispatcher is null)
+            return CommandDispatchCache<TCommand, TResponse>.ExecuteAsync(_handlerResolver, command, cancellationToken);
+
+        var generated = _generatedDispatcher.TryDispatchAsync<TCommand, TResponse>(command, cancellationToken);
+        if (!generated.IsCompletedSuccessfully)
+            return DispatchAfterGeneratedAsync<TCommand, TResponse>(generated, command, cancellationToken);
+
+        var result = generated.Result;
+        return result.WasHandled
+            ? ValueTask.FromResult(result.Response)
+            : CommandDispatchCache<TCommand, TResponse>.ExecuteAsync(_handlerResolver, command, cancellationToken);
+    }
+
+    private async ValueTask DispatchAfterGeneratedAsync<TCommand>(ValueTask<bool> generated, TCommand command, CancellationToken cancellationToken)
+        where TCommand : ICommand
+    {
+        if (!await generated.ConfigureAwait(false))
+            await CommandDispatchCache<TCommand>.ExecuteAsync(_handlerResolver, command, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask<TResponse> DispatchAfterGeneratedAsync<TCommand, TResponse>(
+        ValueTask<DispatchResult<TResponse>> generated,
+        TCommand command,
+        CancellationToken cancellationToken)
+        where TCommand : ICommand<TResponse>
+    {
+        var result = await generated.ConfigureAwait(false);
+        if (result.WasHandled)
+            return result.Response;
 
         return await CommandDispatchCache<TCommand, TResponse>.ExecuteAsync(_handlerResolver, command, cancellationToken).ConfigureAwait(false);
     }

@@ -18,26 +18,26 @@ public class Mediator(
     private readonly INotificationDispatcher _notificationDispatcher = notificationDispatcher ?? throw new ArgumentNullException(nameof(notificationDispatcher));
 
     /// <inheritdoc />
-    public async ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : ICommand
-        => await _commandDispatcher.DispatchAsync(command, cancellationToken).ConfigureAwait(false);
+    public ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : ICommand
+        => _commandDispatcher.DispatchAsync(command, cancellationToken);
 
     /// <inheritdoc />
-    public async ValueTask<TResponse> SendAsync<TCommand, TResponse>(TCommand command, CancellationToken cancellationToken = default)
+    public ValueTask<TResponse> SendAsync<TCommand, TResponse>(TCommand command, CancellationToken cancellationToken = default)
         where TCommand : ICommand<TResponse>
-        => await _commandDispatcher.DispatchAsync<TCommand, TResponse>(command, cancellationToken).ConfigureAwait(false);
+        => _commandDispatcher.DispatchAsync<TCommand, TResponse>(command, cancellationToken);
 
     /// <inheritdoc />
-    public async ValueTask<TResponse> QueryAsync<TQuery, TResponse>(TQuery query, CancellationToken cancellationToken = default)
+    public ValueTask<TResponse> QueryAsync<TQuery, TResponse>(TQuery query, CancellationToken cancellationToken = default)
         where TQuery : IQuery<TResponse>
-        => await _queryDispatcher.DispatchAsync<TQuery, TResponse>(query, cancellationToken).ConfigureAwait(false);
+        => _queryDispatcher.DispatchAsync<TQuery, TResponse>(query, cancellationToken);
 
     /// <inheritdoc />
-    public async ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
+    public ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : INotification
-        => await _notificationDispatcher.PublishAsync(notification, cancellationToken).ConfigureAwait(false);
+        => _notificationDispatcher.PublishAsync(notification, cancellationToken);
 
     /// <inheritdoc />
-    public async ValueTask<TResponse> PublishAsync<TNotification, TResponse>(TNotification notification, CancellationToken cancellationToken = default)
+    public ValueTask<TResponse> PublishAsync<TNotification, TResponse>(TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : INotification<TResponse>
-        => await _notificationDispatcher.PublishAsync<TNotification, TResponse>(notification, cancellationToken).ConfigureAwait(false);
+        => _notificationDispatcher.PublishAsync<TNotification, TResponse>(notification, cancellationToken);
 }

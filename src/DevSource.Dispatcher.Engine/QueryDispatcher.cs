@@ -1,4 +1,3 @@
-using DevSource.Dispatcher;
 using DevSource.Dispatcher.Queries;
 
 namespace DevSource.Dispatcher.Engine;
@@ -45,17 +44,33 @@ public class QueryDispatcher : IQueryDispatcher
     }
 
     /// <inheritdoc />
-    public async ValueTask<TResponse> DispatchAsync<TQuery, TResponse>(TQuery query, CancellationToken cancellationToken = default) where TQuery : IQuery<TResponse>
+    public ValueTask<TResponse> DispatchAsync<TQuery, TResponse>(TQuery query, CancellationToken cancellationToken = default) where TQuery : IQuery<TResponse>
     {
         if (query is null)
             throw new ArgumentNullException(nameof(query));
 
-        if (_generatedDispatcher is not null)
-        {
-            var generatedResult = await _generatedDispatcher.TryDispatchAsync<TQuery, TResponse>(query, cancellationToken).ConfigureAwait(false);
-            if (generatedResult.WasHandled)
-                return generatedResult.Response;
-        }
+        if (_generatedDispatcher is null)
+            return QueryDispatchCache<TQuery, TResponse>.ExecuteAsync(_handlerResolver, query, cancellationToken);
+
+        var generated = _generatedDispatcher.TryDispatchAsync<TQuery, TResponse>(query, cancellationToken);
+        if (!generated.IsCompletedSuccessfully)
+            return DispatchAfterGeneratedAsync(generated, query, cancellationToken);
+
+        var result = generated.Result;
+        return result.WasHandled
+            ? ValueTask.FromResult(result.Response)
+            : QueryDispatchCache<TQuery, TResponse>.ExecuteAsync(_handlerResolver, query, cancellationToken);
+    }
+
+    private async ValueTask<TResponse> DispatchAfterGeneratedAsync<TQuery, TResponse>(
+        ValueTask<DispatchResult<TResponse>> generated,
+        TQuery query,
+        CancellationToken cancellationToken)
+        where TQuery : IQuery<TResponse>
+    {
+        var result = await generated.ConfigureAwait(false);
+        if (result.WasHandled)
+            return result.Response;
 
         return await QueryDispatchCache<TQuery, TResponse>.ExecuteAsync(_handlerResolver, query, cancellationToken).ConfigureAwait(false);
     }

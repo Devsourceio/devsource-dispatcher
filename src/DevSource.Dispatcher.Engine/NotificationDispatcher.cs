@@ -44,19 +44,28 @@ public class NotificationDispatcher : INotificationDispatcher
     }
 
     /// <inheritdoc />
-    public async ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification
+    public ValueTask PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification
     {
         if (notification is null)
             throw new ArgumentNullException(nameof(notification));
 
-        if (_generatedDispatcher is not null)
-        {
-            var wasHandled = await _generatedDispatcher.TryPublishAsync(notification, cancellationToken).ConfigureAwait(false);
-            if (wasHandled)
-                return;
-        }
+        if (_generatedDispatcher is null)
+            return NotificationDispatchCache<TNotification>.ExecuteAsync(_handlerResolver, notification, cancellationToken);
 
-        await NotificationDispatchCache<TNotification>.ExecuteAsync(_handlerResolver, notification, cancellationToken).ConfigureAwait(false);
+        var generated = _generatedDispatcher.TryPublishAsync(notification, cancellationToken);
+        if (!generated.IsCompletedSuccessfully)
+            return PublishAfterGeneratedAsync(generated, notification, cancellationToken);
+
+        return generated.Result
+            ? ValueTask.CompletedTask
+            : NotificationDispatchCache<TNotification>.ExecuteAsync(_handlerResolver, notification, cancellationToken);
+    }
+
+    private async ValueTask PublishAfterGeneratedAsync<TNotification>(ValueTask<bool> generated, TNotification notification, CancellationToken cancellationToken)
+        where TNotification : INotification
+    {
+        if (!await generated.ConfigureAwait(false))
+            await NotificationDispatchCache<TNotification>.ExecuteAsync(_handlerResolver, notification, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
