@@ -37,7 +37,8 @@ Hybrid strategy:
 - Commands with and without responses
 - Queries with single-handler execution
 - Notifications with fan-out publishing
-- Optional pipeline behaviors with deterministic ordering
+- Optional pipeline behaviors with deterministic ordering, registered explicitly (closed or open generic)
+- Ready-made logging and validation behaviors included in the same package
 - `CancellationToken` support
 - `ValueTask`-based APIs
 - Delegate caching per request type
@@ -57,8 +58,9 @@ The `DevSource.Dispatcher` package is the public entry point and is intended to 
 - public contracts
 - runtime engine
 - source generator analyzer
+- ready-made pipeline behaviors (logging and validation)
 
-That means consumers do not need to install `DevSource.Dispatcher.Engine` or `DevSource.Dispatcher.SourceGenerator` separately when using the NuGet package.
+That means consumers do not need to install `DevSource.Dispatcher.Engine`, `DevSource.Dispatcher.Behaviors`, or `DevSource.Dispatcher.SourceGenerator` separately when using the NuGet package. The package depends on `Microsoft.Extensions.DependencyInjection.Abstractions` and `Microsoft.Extensions.Logging.Abstractions`.
 
 After installing the package, you can register the dispatcher with a single discovery call:
 
@@ -307,12 +309,72 @@ public sealed class LoggingBehavior : IPipelineBehavior<CreateOrderCommand, Guid
 
 The engine executes ordered behaviors first by `Order`, then by type name as a deterministic fallback.
 
+Register behaviors explicitly. Discovery registers handlers only, so a behavior is never picked up by accident:
+
+```csharp
+services.AddDispatcherBehavior<LoggingBehavior>();            // closed behavior
+services.AddDispatcherBehavior(typeof(ValidationBehavior<,>)); // open generic: applies to every request that satisfies its constraints
+```
+
+Open generic behaviors register for the contracts whose type arguments are the behavior's own type parameters, in order. Requests that violate a generic constraint simply skip the behavior.
+
+### Ready-made behaviors
+
+The `DevSource.Dispatcher` package already includes logging and validation behaviors (namespace `DevSource.Dispatcher.Behaviors`), so no extra install is needed:
+
+```csharp
+using DevSource.Dispatcher.Behaviors;
+
+services.AddLogging();
+services.AddDispatcherLogging();     // logs start, duration and failures; never logs the request itself
+services.AddDispatcherValidation();  // runs every IRequestValidator<TRequest> and throws RequestValidationException with all errors
+
+public sealed class CreateOrderValidator : IRequestValidator<CreateOrderCommand>
+{
+    public ValueTask<IReadOnlyList<ValidationError>> ValidateAsync(CreateOrderCommand request, CancellationToken cancellationToken)
+        => ValueTask.FromResult<IReadOnlyList<ValidationError>>(
+            string.IsNullOrWhiteSpace(request.CustomerName) ? [new ValidationError("CustomerName", "Customer name is required.")] : []);
+}
+```
+
+Logging always runs outermost and validation next, regardless of registration order. Requests without a validator pass straight through.
+
+## Good to Know
+
+### Discovery rules
+
+`AddDispatcherDiscovery()` scans the calling assembly, the referenced assemblies it can load, and every loaded assembly marked as a dispatcher assembly (the source generator adds the marker to any assembly that contains handlers).
+
+- Names that merely start with `System`, `Microsoft`, or `Windows` are only skipped when they are real framework assemblies (`System`, `System.*`, `Microsoft.*`, `Windows.*`, `WindowsBase`, `netstandard`, `mscorlib`).
+- A referenced assembly that cannot be loaded is skipped instead of failing startup. Use the report callback to see which ones:
+
+```csharp
+services.AddDispatcherDiscovery(report =>
+{
+    Console.WriteLine($"Scanned: {string.Join(", ", report.DiscoveredAssemblies)}");
+    Console.WriteLine($"Skipped: {string.Join(", ", report.SkippedAssemblies)}");
+});
+```
+
+- Discovery registers handlers only. Register behaviors with `AddDispatcherBehavior`, `AddDispatcherLogging`, or `AddDispatcherValidation`.
+
+### When exceptions surface
+
+Dispatch methods return the handler's `ValueTask` without wrapping it in an async state machine, which keeps the hot path allocation-light. A `null` request (`ArgumentNullException`) and a missing handler (`InvalidOperationException`) are therefore thrown by the call itself, not by the `await`. Code that awaits the call directly, such as `await mediator.SendAsync(...)`, sees no difference. Code that stores the `ValueTask` before awaiting it observes the exception at the call site.
+
 ## Running Tests
 
 Run the unit test suite with:
 
 ```bash
 dotnet test tests/DevSource.Dispatcher.Tests/DevSource.Dispatcher.Tests.csproj
+```
+
+Run both test projects with coverage:
+
+```bash
+dotnet test tests/DevSource.Dispatcher.Tests -p:CollectCoverage=true
+dotnet test tests/DevSource.Dispatcher.SourceGenerator.Tests -p:CollectCoverage=true
 ```
 
 To validate the sample application build as well:
@@ -333,7 +395,7 @@ The project currently uses:
 Run the benchmark project with:
 
 ```bash
-dotnet run --project tests/DevSource.Dispatcher.Benchmarks/DevSource.Dispatcher.Benchmarks.csproj -- --filter *DispatcherBenchmarks*
+dotnet run --project tests/DevSource.Dispatcher.Benchmarks/DevSource.Dispatcher.Benchmarks.csproj
 ```
 
 The benchmark compares DevSource.Dispatcher against:
@@ -347,30 +409,29 @@ Artifacts are written to:
 
 Important note:
 
-- current benchmark artifacts were collected from the `RELEASE`-based run stored in `tests/DevSource.Dispatcher.Benchmarks/BenchmarkDotNet.Artifacts/results/DevSource.Dispatcher.Benchmarks.DispatcherBenchmarks-report-github.md`
+- the snapshot below comes from a `Release` run of `DispatcherBenchmarks` (3 warmup and 5 measured iterations)
 
 Latest benchmark snapshot:
 
 | Method                      |      Mean | Allocated |
 |-----------------------------|----------:|----------:|
-| DevSource_Runtime_Command   |  87.66 ns |     280 B |
-| DevSource_Generated_Command |  97.16 ns |     280 B |
-| Wolverine_Command           | 190.59 ns |     656 B |
-| MediatR_Command             | 211.37 ns |    1376 B |
-| DevSource_Runtime_Query     |  85.94 ns |     280 B |
-| DevSource_Generated_Query   | 100.80 ns |     280 B |
-| Wolverine_Query             | 192.75 ns |     656 B |
-| MediatR_Query               | 266.44 ns |    1440 B |
+| DevSource_Runtime_Command   |  45.51 ns |      48 B |
+| DevSource_Generated_Command |  53.38 ns |      48 B |
+| Wolverine_Command           | 184.02 ns |     656 B |
+| MediatR_Command             | 222.30 ns |    1376 B |
+| DevSource_Runtime_Query     |  39.76 ns |      48 B |
+| DevSource_Generated_Query   |  51.48 ns |      48 B |
+| Wolverine_Query             | 189.12 ns |     656 B |
+| MediatR_Query               | 259.20 ns |    1440 B |
 
-In the current published benchmark artifacts, DevSource.Dispatcher is faster and allocates less memory than both MediatR and WolverineFx for the measured command and query scenarios.
+These numbers come from a single Release run on one machine with the default job settings, so treat them as indicative. The generated path is currently a few nanoseconds slower than the runtime path. In this run, DevSource.Dispatcher is faster and allocates less memory than both MediatR and WolverineFx for the measured command and query scenarios.
 
 ## Roadmap
 
 Potential next extensions include:
 
-- Validation extensions
-- Logging extensions
-- Resilience extensions
+- Transaction, caching, retry/timeout, idempotency, and authorization behaviors
+- Resilience extensions beyond retry and timeout
 - Observability extensions
 - Streaming support
 - Additional integration adapters
@@ -398,6 +459,7 @@ Current contributors:
 ```text
 src/
   DevSource.Dispatcher/
+  DevSource.Dispatcher.Behaviors/
   DevSource.Dispatcher.Engine/
   DevSource.Dispatcher.SourceGenerator/
 samples/
@@ -406,6 +468,8 @@ samples/
   Order.Domain/
 tests/
   DevSource.Dispatcher.Tests/
+  DevSource.Dispatcher.Tests.Fixtures/
+  DevSource.Dispatcher.SourceGenerator.Tests/
   DevSource.Dispatcher.Benchmarks/
 DevSource.slnx
 ```
