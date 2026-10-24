@@ -8,10 +8,18 @@
         "resolved": "10.0.5",
         "contentHash": "iVMtq9eRvzyhx8949EGT0OCYJfXi737SbRVzWXE5GrOgGj5AaZ9eUuxA/BSUfmOMALKn/g8KfFaNQw0eiB3lyA=="
       },
+      "Microsoft.Extensions.Logging.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.5",
+        "contentHash": "9HOdqlDtPptVcmKAjsQ/Nr5Rxfq6FMYLdhvZh1lVmeKR738qeYecQD7+ldooXf+u2KzzR1kafSphWngIM3C6ug==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.5"
+        }
+      },
       "order.application": {
         "type": "Project",
         "dependencies": {
-          "DevSource.Dispatcher": "[1.1.0, )",
+          "DevSource.Dispatcher": "[1.2.0, )",
           "Order.Domain": "[1.0.0, )"
         }
       },
@@ -20,11 +28,12 @@
       },
       "DevSource.Dispatcher": {
         "type": "CentralTransitive",
-        "requested": "[1.1.0, )",
-        "resolved": "1.1.0",
-        "contentHash": "Hml2ALtoy2ufw4ECuqituBhJ2aFcs/oyEN8Ps3bB13tTljHY4StASoOENmoG9pzGDGzeveTkvQt6Oxolzs2J4w==",
+        "requested": "[1.2.0, )",
+        "resolved": "1.2.0",
+        "contentHash": "EklCP8UlNltV92syH74ZaP4tf0YNCWy4T3ToEy75lZBtSDTEp1lXDAqTXpGH3Fc/yZVApWcTpKwlrk1UJTgVXg==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.5"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.5",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.5"
         }
       }
     }

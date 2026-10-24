@@ -4,14 +4,14 @@
     "net10.0": {
       "DevSource.Dispatcher": {
         "type": "Direct",
-        "requested": "[1.1.0, )",
-        "resolved": "1.1.0",
-        "contentHash": "Hml2ALtoy2ufw4ECuqituBhJ2aFcs/oyEN8Ps3bB13tTljHY4StASoOENmoG9pzGDGzeveTkvQt6Oxolzs2J4w=="
+        "requested": "[1.2.0, )",
+        "resolved": "1.2.0",
+        "contentHash": "EklCP8UlNltV92syH74ZaP4tf0YNCWy4T3ToEy75lZBtSDTEp1lXDAqTXpGH3Fc/yZVApWcTpKwlrk1UJTgVXg=="
       },
       "order.application": {
         "type": "Project",
         "dependencies": {
-          "DevSource.Dispatcher": "[1.1.0, )",
+          "DevSource.Dispatcher": "[1.2.0, )",
           "Order.Domain": "[1.0.0, )"
         }
       },
