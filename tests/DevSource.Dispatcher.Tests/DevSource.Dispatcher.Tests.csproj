@@ -29,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevSource.Dispatcher\DevSource.Dispatcher.csproj" AdditionalProperties="GeneratePackageOnBuild=false" />
     <ProjectReference Include="..\..\src\DevSource.Dispatcher.Engine\DevSource.Dispatcher.Engine.csproj" />
+    <ProjectReference Include="..\..\src\DevSource.Dispatcher.Behaviors\DevSource.Dispatcher.Behaviors.csproj" />
     <ProjectReference Include="..\DevSource.Dispatcher.Tests.Fixtures\DevSource.Dispatcher.Tests.Fixtures.csproj" />
     <ProjectReference Include="..\..\src\DevSource.Dispatcher.SourceGenerator\DevSource.Dispatcher.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
