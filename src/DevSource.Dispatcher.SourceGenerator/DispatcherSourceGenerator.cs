@@ -31,7 +31,7 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
   {
     var compilationAndTypes = context.SyntaxProvider
         .CreateSyntaxProvider(
-            static (node, _) => node is ClassDeclarationSyntax,
+            static (node, _) => node is ClassDeclarationSyntax or RecordDeclarationSyntax,
             static (generatorContext, _) => generatorContext.SemanticModel.GetDeclaredSymbol(generatorContext.Node) as INamedTypeSymbol)
         .Where(static symbol => symbol is not null)
         .Collect()
@@ -228,12 +228,12 @@ internal sealed class DispatcherGenerationModel
 
     foreach (var type in candidateTypes)
     {
-      if (type is null || type.IsAbstract)
+      if (type is null || type.IsAbstract || type.TypeKind != TypeKind.Class || IsOrIsNestedInGenericType(type))
         continue;
 
       foreach (var implementedInterface in type.AllInterfaces)
       {
-        if (!implementedInterface.IsGenericType)
+        if (!implementedInterface.IsGenericType || !AreTypeArgumentsAccessible(compilation, implementedInterface))
           continue;
 
         if (commandHandlerSymbol is not null && SymbolEqualityComparer.Default.Equals(implementedInterface.OriginalDefinition, commandHandlerSymbol))
@@ -264,6 +264,30 @@ internal sealed class DispatcherGenerationModel
         commandRequestsWithResponse.Select(static pair => new RequestWithResponseModel(pair.Key, pair.Value)).ToImmutableArray(),
         queryRequests.Select(static pair => new RequestWithResponseModel(pair.Key, pair.Value)).ToImmutableArray(),
         notificationRequests.ToImmutable().ToImmutableArray());
+  }
+
+  // Generated code lives at namespace level, so private/protected nested request types cannot be named there.
+  private static bool AreTypeArgumentsAccessible(Compilation compilation, INamedTypeSymbol implementedInterface)
+  {
+    foreach (var typeArgument in implementedInterface.TypeArguments)
+    {
+      if (!compilation.IsSymbolAccessibleWithin(typeArgument, compilation.Assembly))
+        return false;
+    }
+
+    return true;
+  }
+
+  // Open generic handlers cannot be named in generated code; the runtime fallback resolves them through DI.
+  private static bool IsOrIsNestedInGenericType(INamedTypeSymbol type)
+  {
+    for (var current = type; current is not null; current = current.ContainingType)
+    {
+      if (current.IsGenericType)
+        return true;
+    }
+
+    return false;
   }
 
   private static string GetTypeName(ITypeSymbol symbol)
