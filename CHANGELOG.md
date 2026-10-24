@@ -11,6 +11,7 @@
 - Discovery no longer treats names that merely start with `System`, `Microsoft`, or `Windows` as framework assemblies.
 - Discovery now accepts every loaded assembly marked as a dispatcher assembly, even when the root assembly's metadata does not reference it.
 - Discovery skips referenced assemblies that cannot be loaded instead of failing, and lists them in `DispatcherDiscoveryReport.SkippedAssemblies`.
+- Generated dispatchers are no longer `async`: handled requests return the handler task through new `GeneratedDispatchExecutor` helpers (`ExecuteCommandHandledAsync`, `ExecuteQueryHandledAsync`, `PublishNotificationHandledAsync`). Throughput on the benchmark is unchanged.
 - Reduced dispatch overhead: dispatchers and `Mediator` no longer wrap calls in `async` state machines, and requests without pipeline behaviors skip behavior ordering. In the benchmark project the runtime command path dropped from about 82 ns / 280 B to about 45 ns / 48 B.
 - Behavior change: `ArgumentNullException` for a null request and `InvalidOperationException` for a missing handler are now thrown synchronously from `DispatchAsync`, `SendAsync`, `QueryAsync` and `PublishAsync` instead of surfacing from the awaited `ValueTask`. The same applies to non-`async` handlers and behaviors that throw before returning a `ValueTask`. Code that awaits the call directly is unaffected.
 

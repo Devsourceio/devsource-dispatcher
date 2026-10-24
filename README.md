@@ -185,19 +185,19 @@ sealed class ManualResolver : IRequestHandlerResolver
 The repository includes a real layered sample under `samples/`:
 
 - `samples/Order.Domain` - domain model and repository abstraction
-- `samples/Order.Application` - commands, queries, DTOs, and handlers discovered automatically
+- `samples/Order.Application` - commands, queries, DTOs, handlers discovered automatically, and a `CreateOrderCommandValidator`
 - `samples/Order.Infrastructure` - repository implementation and infrastructure registrations
-- `samples/Order.Api` - Minimal API host using only `services.AddDispatcherDiscovery()`
+- `samples/Order.Api` - Minimal API host using `services.AddDispatcherDiscovery()`, `AddDispatcherLogging()`, and `AddDispatcherValidation()`
 
 The sample intentionally consumes the library from a local NuGet package instead of `ProjectReference` entries to `src/`, so it stays close to a real consumer application.
 
-Build the library artifacts first:
+Pack the library first. `samples/NuGet.Config` points at that folder:
 
 ```bash
-dotnet build src/DevSource.Dispatcher/DevSource.Dispatcher.csproj -c Release
+dotnet pack src/DevSource.Dispatcher -c Release -o artifacts/pack
 ```
 
-That build writes the `.nupkg` used by `samples/NuGet.Config` into `src/DevSource.Dispatcher/bin/Release`.
+That writes `artifacts/pack/DevSource.Dispatcher.<version>.nupkg`, which the sample restores as a normal package reference. Run `dotnet build -c Release` on the solution before packing, so the packed assemblies are fresh.
 
 Run the sample API with:
 
@@ -215,6 +215,12 @@ curl -X POST http://localhost:5000/orders \
 
 ```bash
 curl http://localhost:5000/orders/{orderId}
+```
+
+An invalid order (empty customer name or no items) is rejected by the validation behavior with a `400` problem response:
+
+```bash
+curl -X POST http://localhost:5000/orders -H "Content-Type: application/json" -d "{\"customerName\":\"\",\"items\":[]}"
 ```
 
 ## Usage Examples
@@ -380,7 +386,7 @@ dotnet test tests/DevSource.Dispatcher.SourceGenerator.Tests -p:CollectCoverage=
 To validate the sample application build as well:
 
 ```bash
-dotnet build src/DevSource.Dispatcher/DevSource.Dispatcher.csproj -c Release
+dotnet pack src/DevSource.Dispatcher -c Release -o artifacts/pack
 dotnet build samples/Order.slnx -c Release
 ```
 
@@ -415,16 +421,27 @@ Latest benchmark snapshot:
 
 | Method                      |      Mean | Allocated |
 |-----------------------------|----------:|----------:|
-| DevSource_Runtime_Command   |  45.51 ns |      48 B |
-| DevSource_Generated_Command |  53.38 ns |      48 B |
-| Wolverine_Command           | 184.02 ns |     656 B |
-| MediatR_Command             | 222.30 ns |    1376 B |
-| DevSource_Runtime_Query     |  39.76 ns |      48 B |
-| DevSource_Generated_Query   |  51.48 ns |      48 B |
-| Wolverine_Query             | 189.12 ns |     656 B |
-| MediatR_Query               | 259.20 ns |    1440 B |
+| DevSource_Runtime_Command   |  38.79 ns |      48 B |
+| DevSource_Generated_Command |  49.53 ns |      48 B |
+| Wolverine_Command           | 186.32 ns |     656 B |
+| MediatR_Command             | 193.80 ns |    1376 B |
+| DevSource_Runtime_Query     |  39.35 ns |      48 B |
+| DevSource_Generated_Query   |  51.87 ns |      48 B |
+| Wolverine_Query             | 188.98 ns |     656 B |
+| MediatR_Query               | 250.65 ns |    1440 B |
 
-These numbers come from a single Release run on one machine with the default job settings, so treat them as indicative. The generated path is currently a few nanoseconds slower than the runtime path. In this run, DevSource.Dispatcher is faster and allocates less memory than both MediatR and WolverineFx for the measured command and query scenarios.
+These numbers are the average of two consecutive Release runs on one machine with the default job settings (individual runs varied by up to about 5 ns for DevSource), so treat them as indicative. In this run, the generated path is about 10 ns slower than the runtime path (see below), and DevSource.Dispatcher is faster and allocates less memory than both MediatR and WolverineFx for the measured command and query scenarios.
+
+### Generated dispatch versus runtime dispatch
+
+The generated dispatcher no longer contains `async` methods: a handled request returns the handler's task through `GeneratedDispatchExecutor`, and only a request that is still pending allocates an async state machine. Measured with the same two-run average:
+
+| Method                      | Before (async generated code) | After (not async) |
+|-----------------------------|------------------------------:|------------------:|
+| DevSource_Generated_Command |                      50.05 ns |          49.53 ns |
+| DevSource_Generated_Query   |                      50.82 ns |          51.87 ns |
+
+The change is neutral on this benchmark, whose handlers complete synchronously: the generated path stays about 10 ns behind the runtime path (38.79 ns and 39.35 ns). The runtime path resolves its pipeline through a static generic cache in one step, while the generated path first goes through an interface generic call and a type test before reaching the same cache; that extra hop is the likely source of the difference, but it was not profiled. Closing that gap needs a different design, such as having generated code register typed entry points once instead of testing types per call.
 
 ## Roadmap
 
