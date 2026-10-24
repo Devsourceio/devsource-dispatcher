@@ -64,4 +64,54 @@ public sealed class ServiceProviderRequestHandlerResolverTests
         Assert.Throws<InvalidOperationException>(commandResponseAction);
         Assert.Throws<InvalidOperationException>(queryAction);
     }
+
+    [Fact]
+    public void GetNotificationHandlers_WithResponse_ShouldResolveRegisteredServices()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddTransient<DevSource.Dispatcher.Notifications.INotificationHandler<TestNotificationWithResponse, string>>(_ => new TestNotificationWithResponseHandler("one"));
+        var resolver = new DevSource.Dispatcher.Engine.ServiceProviderRequestHandlerResolver(services.BuildServiceProvider());
+
+        // Act
+        var handlers = resolver.GetNotificationHandlers<TestNotificationWithResponse, string>();
+
+        // Asserts
+        Assert.IsType<TestNotificationWithResponseHandler>(Assert.Single(handlers));
+    }
+
+    [Fact]
+    public void GetNotificationHandlers_WithResponse_OnResolverWithoutSupport_ShouldThrowNotSupported()
+    {
+        // Arrange
+        DevSource.Dispatcher.Engine.IRequestHandlerResolver resolver = new MinimalRequestHandlerResolver();
+
+        // Act
+        var action = () => resolver.GetNotificationHandlers<TestNotificationWithResponse, string>();
+
+        // Asserts
+        var exception = Assert.Throws<NotSupportedException>(action);
+        Assert.Contains(nameof(TestNotificationWithResponse), exception.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class MinimalRequestHandlerResolver : DevSource.Dispatcher.Engine.IRequestHandlerResolver
+    {
+        public DevSource.Dispatcher.Commands.ICommandHandler<TCommand> GetRequiredCommandHandler<TCommand>()
+            where TCommand : DevSource.Dispatcher.Commands.ICommand => throw new NotImplementedException();
+
+        public DevSource.Dispatcher.Commands.ICommandHandler<TCommand, TResponse> GetRequiredCommandHandler<TCommand, TResponse>()
+            where TCommand : DevSource.Dispatcher.Commands.ICommand<TResponse> => throw new NotImplementedException();
+
+        public DevSource.Dispatcher.Queries.IQueryHandler<TQuery, TResponse> GetRequiredQueryHandler<TQuery, TResponse>()
+            where TQuery : DevSource.Dispatcher.Queries.IQuery<TResponse> => throw new NotImplementedException();
+
+        public IEnumerable<DevSource.Dispatcher.IPipelineBehavior<TCommand>> GetCommandBehaviors<TCommand>()
+            where TCommand : DevSource.Dispatcher.Commands.ICommand => [];
+
+        public IEnumerable<DevSource.Dispatcher.IPipelineBehavior<TRequest, TResponse>> GetBehaviors<TRequest, TResponse>()
+            where TRequest : notnull => [];
+
+        public IEnumerable<DevSource.Dispatcher.Notifications.INotificationHandler<TNotification>> GetNotificationHandlers<TNotification>()
+            where TNotification : DevSource.Dispatcher.Notifications.INotification => [];
+    }
 }

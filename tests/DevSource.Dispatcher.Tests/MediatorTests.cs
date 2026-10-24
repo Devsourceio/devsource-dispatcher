@@ -54,4 +54,26 @@ public sealed class MediatorTests
         queryDispatcher.VerifyAll();
         notificationDispatcher.VerifyAll();
     }
+
+    [Fact]
+    public async Task PublishAsync_WithResponse_ShouldDelegateToNotificationDispatcher()
+    {
+        // Arrange
+        var notificationDispatcher = new Mock<DevSource.Dispatcher.Notifications.INotificationDispatcher>();
+        var notification = new TestNotificationWithResponse(new TrackingState());
+        notificationDispatcher
+            .Setup(x => x.PublishAsync<TestNotificationWithResponse, string>(notification, It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.FromResult("published"));
+        var mediator = new DevSource.Dispatcher.Engine.Mediator(
+            new Mock<DevSource.Dispatcher.Commands.ICommandDispatcher>().Object,
+            new Mock<DevSource.Dispatcher.Queries.IQueryDispatcher>().Object,
+            notificationDispatcher.Object);
+
+        // Act
+        var response = await mediator.PublishAsync<TestNotificationWithResponse, string>(notification, TestContext.Current.CancellationToken);
+
+        // Asserts
+        Assert.Equal("published", response);
+        notificationDispatcher.VerifyAll();
+    }
 }

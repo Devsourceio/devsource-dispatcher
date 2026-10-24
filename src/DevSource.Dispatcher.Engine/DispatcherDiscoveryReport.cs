@@ -34,4 +34,9 @@ public sealed class DispatcherDiscoveryReport
     /// Gets the number of notification handlers registered during discovery.
     /// </summary>
     public int RegisteredNotificationHandlerCount { get; init; }
+
+    /// <summary>
+    /// Gets the referenced assemblies that could not be loaded and were therefore not scanned.
+    /// </summary>
+    public IReadOnlyList<string> SkippedAssemblies { get; init; } = [];
 }

@@ -7,6 +7,7 @@
     <LangVersion>latest</LangVersion>
     <IsPackable>false</IsPackable>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <Exclude>[*.Fixtures]*</Exclude>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevSource.Dispatcher\DevSource.Dispatcher.csproj" AdditionalProperties="GeneratePackageOnBuild=false" />
     <ProjectReference Include="..\..\src\DevSource.Dispatcher.Engine\DevSource.Dispatcher.Engine.csproj" />
+    <ProjectReference Include="..\DevSource.Dispatcher.Tests.Fixtures\DevSource.Dispatcher.Tests.Fixtures.csproj" />
     <ProjectReference Include="..\..\src\DevSource.Dispatcher.SourceGenerator\DevSource.Dispatcher.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

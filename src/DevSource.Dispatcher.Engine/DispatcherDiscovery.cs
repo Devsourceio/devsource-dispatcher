@@ -6,8 +6,14 @@ internal static class DispatcherDiscovery
 {
     private const string DispatcherAssemblyAttributeFullName = "DevSource.Dispatcher.DispatcherAssemblyAttribute";
     private const string GeneratedDispatcherFullName = "DevSource.Dispatcher.Generated.GeneratedDispatcher";
+    private static readonly string[] FrameworkPrefixes = ["System", "Microsoft", "Windows"];
 
     public static Assembly[] FindCandidateAssemblies(Assembly rootAssembly)
+        => FindCandidateAssemblies(rootAssembly, out _);
+
+    // Loaded dispatcher assemblies are trusted by their explicit marker, so they are accepted even when the root's
+    // metadata no longer references them (the compiler drops references that the root never uses in code).
+    public static Assembly[] FindCandidateAssemblies(Assembly rootAssembly, out IReadOnlyList<string> skippedAssemblies)
     {
         ArgumentNullException.ThrowIfNull(rootAssembly);
 
@@ -15,30 +21,27 @@ internal static class DispatcherDiscovery
         {
             [rootAssembly.GetName().Name!] = rootAssembly,
         };
+        var skipped = new List<string>();
 
         foreach (var reference in rootAssembly.GetReferencedAssemblies())
         {
             if (string.IsNullOrWhiteSpace(reference.Name) || IsFrameworkAssembly(reference.Name))
                 continue;
 
-            var assembly = LoadAssembly(reference);
-            if (assembly == rootAssembly || IsDispatcherAssembly(assembly))
+            var assembly = TryLoadAssembly(reference);
+            if (assembly is null)
+                skipped.Add(reference.Name);
+            else if (IsDispatcherAssembly(assembly))
                 assemblies[assembly.GetName().Name!] = assembly;
         }
 
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (assembly.IsDynamic)
-                continue;
-
-            var assemblyName = assembly.GetName().Name;
-            if (string.IsNullOrWhiteSpace(assemblyName) || assemblies.ContainsKey(assemblyName))
-                continue;
-
-            if (ReferencesRootAssembly(assembly, rootAssembly) && IsDispatcherAssembly(assembly))
-                assemblies[assemblyName] = assembly;
+            if (!assembly.IsDynamic && IsDispatcherAssembly(assembly))
+                assemblies.TryAdd(assembly.GetName().Name!, assembly);
         }
 
+        skippedAssemblies = skipped;
         return assemblies.Values.ToArray();
     }
 
@@ -67,36 +70,26 @@ internal static class DispatcherDiscovery
         return generatedDispatcherType;
     }
 
-    private static Assembly LoadAssembly(AssemblyName assemblyName)
+    // An optional or platform-specific reference that cannot load cannot hold handlers we could register either.
+    private static Assembly? TryLoadAssembly(AssemblyName assemblyName)
     {
         try
         {
             return Assembly.Load(assemblyName);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is FileNotFoundException or FileLoadException or BadImageFormatException)
         {
-            throw new InvalidOperationException($"Failed to load referenced assembly '{assemblyName.FullName}' during dispatcher discovery. Use AddDispatcherFromAssemblies for explicit registration if this dependency should be excluded.", exception);
+            return null;
         }
     }
 
     private static bool IsFrameworkAssembly(string assemblyName)
-        => assemblyName.StartsWith("System", StringComparison.OrdinalIgnoreCase)
-           || assemblyName.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase)
-           || assemblyName.StartsWith("netstandard", StringComparison.OrdinalIgnoreCase)
-           || assemblyName.StartsWith("mscorlib", StringComparison.OrdinalIgnoreCase)
-           || assemblyName.StartsWith("Windows", StringComparison.OrdinalIgnoreCase);
+        => assemblyName is "netstandard" or "mscorlib" or "WindowsBase"
+           || FrameworkPrefixes.Any(prefix =>
+               assemblyName.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+               || assemblyName.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsDispatcherAssembly(Assembly assembly)
         => assembly.GetCustomAttributesData().Any(static attribute =>
             string.Equals(attribute.AttributeType.FullName, DispatcherAssemblyAttributeFullName, StringComparison.Ordinal));
-
-    private static bool ReferencesRootAssembly(Assembly assembly, Assembly rootAssembly)
-    {
-        var rootAssemblyName = rootAssembly.GetName().Name;
-        if (string.IsNullOrWhiteSpace(rootAssemblyName))
-            return false;
-
-        return assembly.GetReferencedAssemblies().Any(reference =>
-            string.Equals(reference.Name, rootAssemblyName, StringComparison.OrdinalIgnoreCase));
-    }
 }
