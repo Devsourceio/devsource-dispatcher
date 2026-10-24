@@ -57,7 +57,7 @@ public static class DispatcherServiceCollectionExtensions
         else
             DispatcherGeneratedRegistration.Register(services, generatedDispatcherType);
 
-        var registrationSummary = HandlerServiceRegistrar.Register(services, assemblies);
+        var registrationSummary = HandlerServiceRegister.Register(services, assemblies);
         reportCallback(new DispatcherDiscoveryReport
         {
             RootAssemblyName = rootAssembly.GetName().Name!,
@@ -170,7 +170,7 @@ public static class DispatcherServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddDispatcher();
-        HandlerServiceRegistrar.Register(services, assemblies);
+        HandlerServiceRegister.Register(services, assemblies);
         return services;
     }
 
@@ -197,7 +197,7 @@ public static class DispatcherServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddDispatcher<TGeneratedDispatcher>();
-        HandlerServiceRegistrar.Register(services, assemblies);
+        HandlerServiceRegister.Register(services, assemblies);
         return services;
     }
 }

@@ -7,14 +7,14 @@ using Xunit;
 
 namespace DevSource.Dispatcher.Tests;
 
-public sealed class HandlerServiceRegistrarTests
+public sealed class HandlerServiceRegisterTests
 {
-    private static readonly System.Reflection.Assembly TestAssembly = typeof(HandlerServiceRegistrarTests).Assembly;
+    private static readonly System.Reflection.Assembly TestAssembly = typeof(HandlerServiceRegisterTests).Assembly;
 
     [Fact]
     public void Register_WithNullServices_ShouldThrow()
     {
-        var action = () => HandlerServiceRegistrar.Register(null!, TestAssembly);
+        var action = () => HandlerServiceRegister.Register(null!, TestAssembly);
 
         Assert.Throws<ArgumentNullException>(action);
     }
@@ -22,7 +22,7 @@ public sealed class HandlerServiceRegistrarTests
     [Fact]
     public void Register_WithNullAssemblies_ShouldThrow()
     {
-        var action = () => HandlerServiceRegistrar.Register(new ServiceCollection(), null!);
+        var action = () => HandlerServiceRegister.Register(new ServiceCollection(), null!);
 
         Assert.Throws<ArgumentNullException>(action);
     }
@@ -30,7 +30,7 @@ public sealed class HandlerServiceRegistrarTests
     [Fact]
     public void Register_WithNullAssemblyEntry_ShouldThrow()
     {
-        var action = () => HandlerServiceRegistrar.Register(new ServiceCollection(), [null!]);
+        var action = () => HandlerServiceRegister.Register(new ServiceCollection(), [null!]);
 
         Assert.Throws<ArgumentNullException>(action);
     }
@@ -38,7 +38,7 @@ public sealed class HandlerServiceRegistrarTests
     [Fact]
     public void Register_WithoutAssemblies_ShouldThrow()
     {
-        var action = () => HandlerServiceRegistrar.Register(new ServiceCollection());
+        var action = () => HandlerServiceRegister.Register(new ServiceCollection());
 
         Assert.Throws<ArgumentException>(action);
     }
@@ -48,7 +48,7 @@ public sealed class HandlerServiceRegistrarTests
     {
         var services = new ServiceCollection();
 
-        var summary = HandlerServiceRegistrar.Register(services, TestAssembly);
+        var summary = HandlerServiceRegister.Register(services, TestAssembly);
 
         Assert.Equal(2, summary.RegisteredCommandHandlerCount);
         Assert.Equal(1, summary.RegisteredQueryHandlerCount);
@@ -59,10 +59,10 @@ public sealed class HandlerServiceRegistrarTests
     public void Register_Twice_ShouldNotDuplicateOrRecount()
     {
         var services = new ServiceCollection();
-        HandlerServiceRegistrar.Register(services, TestAssembly);
+        HandlerServiceRegister.Register(services, TestAssembly);
         var descriptorCount = services.Count;
 
-        var summary = HandlerServiceRegistrar.Register(services, TestAssembly);
+        var summary = HandlerServiceRegister.Register(services, TestAssembly);
 
         Assert.Equal(descriptorCount, services.Count);
         Assert.Equal(0, summary.RegisteredCommandHandlerCount);
@@ -76,7 +76,7 @@ public sealed class HandlerServiceRegistrarTests
         var services = new ServiceCollection();
         services.AddTransient<ICommandHandler<TestCommand>>(_ => new TestCommandHandler());
 
-        var action = () => HandlerServiceRegistrar.Register(services, TestAssembly);
+        var action = () => HandlerServiceRegister.Register(services, TestAssembly);
 
         var exception = Assert.Throws<InvalidOperationException>(action);
         Assert.Contains("factory/instance registration", exception.Message, StringComparison.Ordinal);
@@ -89,7 +89,7 @@ public sealed class HandlerServiceRegistrarTests
         var services = new ServiceCollection();
         services.AddTransient<ICommandHandler<TestCommand>, TestCommandHandler>();
 
-        var summary = HandlerServiceRegistrar.Register(services, TestAssembly);
+        var summary = HandlerServiceRegister.Register(services, TestAssembly);
 
         Assert.Equal(1, summary.RegisteredCommandHandlerCount);
         Assert.Single(services, static descriptor => descriptor.ServiceType == typeof(ICommandHandler<TestCommand>));
@@ -104,7 +104,7 @@ public sealed class HandlerServiceRegistrarTests
         services.AddTransient<ICommandHandler<TestCommandWithResponse, string>, TestCommandWithResponseHandler>();
         services.AddTransient<IQueryHandler<TestQuery, int>, TestQueryHandler>();
 
-        var summary = HandlerServiceRegistrar.Register(services, TestAssembly);
+        var summary = HandlerServiceRegister.Register(services, TestAssembly);
 
         Assert.Equal(1, summary.RegisteredCommandHandlerCount);
         Assert.Equal(0, summary.RegisteredQueryHandlerCount);
@@ -116,7 +116,7 @@ public sealed class HandlerServiceRegistrarTests
         var services = new ServiceCollection();
         services.AddTransient(typeof(ICommandHandler<FixtureCommand>), typeof(object));
 
-        var action = () => HandlerServiceRegistrar.Register(services, typeof(FixtureCommand).Assembly);
+        var action = () => HandlerServiceRegister.Register(services, typeof(FixtureCommand).Assembly);
 
         var exception = Assert.Throws<InvalidOperationException>(action);
         Assert.Contains($"Existing: {typeof(object).FullName}", exception.Message, StringComparison.Ordinal);

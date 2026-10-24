@@ -223,7 +223,7 @@ public sealed class DispatcherServiceCollectionExtensionsTests
         services.AddTransient<DevSource.Dispatcher.Commands.ICommandHandler<TestCommand>>(_ => new TestCommandHandler());
 
         // Act
-        var action = () => HandlerServiceRegistrar.Register(services, typeof(TestCommandHandler).Assembly);
+        var action = () => HandlerServiceRegister.Register(services, typeof(TestCommandHandler).Assembly);
 
         // Asserts
         var exception = Assert.Throws<InvalidOperationException>(action);

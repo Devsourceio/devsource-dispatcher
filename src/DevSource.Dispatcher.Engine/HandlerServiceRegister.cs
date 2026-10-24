@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace DevSource.Dispatcher.Engine;
 
-internal static class HandlerServiceRegistrar
+internal static class HandlerServiceRegister
 {
     public static HandlerRegistrationSummary Register(IServiceCollection services, params Assembly[] assemblies)
     {
