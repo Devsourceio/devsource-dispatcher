@@ -73,9 +73,6 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
     builder.AppendLine("{");
     builder.AppendLine("    private readonly IRequestHandlerResolver _handlerResolver;");
     builder.AppendLine();
-    builder.AppendLine("    private static TResponse CastResponse<TResponse>(object? response)");
-    builder.AppendLine("        => (TResponse)response!;");
-    builder.AppendLine();
     builder.AppendLine("    public GeneratedDispatcher(IRequestHandlerResolver handlerResolver)");
     builder.AppendLine("    {");
     builder.AppendLine("        _handlerResolver = handlerResolver ?? throw new ArgumentNullException(nameof(handlerResolver));");
@@ -95,9 +92,11 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
     return builder.ToString();
   }
 
+  // The generated methods are deliberately not async: a handled request returns the handler's task through the
+  // executor helpers, so only a request that is still pending pays for an async state machine.
   private static void RenderCommandMethod(StringBuilder builder, ImmutableArray<string> commandRequests, ImmutableArray<RequestWithResponseModel> commandRequestsWithResponse)
   {
-    builder.AppendLine("    async ValueTask<bool> IGeneratedCommandDispatcher.TryDispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken)");
+    builder.AppendLine("    ValueTask<bool> IGeneratedCommandDispatcher.TryDispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken)");
     builder.AppendLine("    {");
     builder.AppendLine("        if (command is null)");
     builder.AppendLine("            throw new ArgumentNullException(nameof(command));");
@@ -108,17 +107,14 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
       var requestType = commandRequests[index];
       var variableName = $"typedCommand{index}";
       builder.AppendLine($"        if (command is {requestType} {variableName})");
-      builder.AppendLine("        {");
-      builder.AppendLine($"            await GeneratedDispatchExecutor.ExecuteCommandAsync(_handlerResolver, {variableName}, cancellationToken).ConfigureAwait(false);");
-      builder.AppendLine("            return true;");
-      builder.AppendLine("        }");
+      builder.AppendLine($"            return GeneratedDispatchExecutor.ExecuteCommandHandledAsync(_handlerResolver, {variableName}, cancellationToken);");
       builder.AppendLine();
     }
 
-    builder.AppendLine("        return false;");
+    builder.AppendLine("        return new ValueTask<bool>(false);");
     builder.AppendLine("    }");
     builder.AppendLine();
-    builder.AppendLine("    async ValueTask<DispatchResult<TResponse>> IGeneratedCommandDispatcher.TryDispatchAsync<TCommand, TResponse>(TCommand command, CancellationToken cancellationToken)");
+    builder.AppendLine("    ValueTask<DispatchResult<TResponse>> IGeneratedCommandDispatcher.TryDispatchAsync<TCommand, TResponse>(TCommand command, CancellationToken cancellationToken)");
     builder.AppendLine("    {");
     builder.AppendLine("        if (command is null)");
     builder.AppendLine("            throw new ArgumentNullException(nameof(command));");
@@ -129,20 +125,17 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
       var request = commandRequestsWithResponse[index];
       var variableName = $"typedCommand{index}";
       builder.AppendLine($"        if (command is {request.RequestType} {variableName})");
-      builder.AppendLine("        {");
-      builder.AppendLine($"            var response = await GeneratedDispatchExecutor.ExecuteCommandAsync<{request.RequestType}, {request.ResponseType}>(_handlerResolver, {variableName}, cancellationToken).ConfigureAwait(false);");
-      builder.AppendLine("            return DispatchResult<TResponse>.Handled(CastResponse<TResponse>(response));");
-      builder.AppendLine("        }");
+      builder.AppendLine($"            return GeneratedDispatchExecutor.ExecuteCommandHandledAsync<{request.RequestType}, {request.ResponseType}, TResponse>(_handlerResolver, {variableName}, cancellationToken);");
       builder.AppendLine();
     }
 
-    builder.AppendLine("        return DispatchResult<TResponse>.NotHandled();");
+    builder.AppendLine("        return new ValueTask<DispatchResult<TResponse>>(DispatchResult<TResponse>.NotHandled());");
     builder.AppendLine("    }");
   }
 
   private static void RenderQueryMethod(StringBuilder builder, ImmutableArray<RequestWithResponseModel> queryRequests)
   {
-    builder.AppendLine("    async ValueTask<DispatchResult<TResponse>> IGeneratedQueryDispatcher.TryDispatchAsync<TQuery, TResponse>(TQuery query, CancellationToken cancellationToken)");
+    builder.AppendLine("    ValueTask<DispatchResult<TResponse>> IGeneratedQueryDispatcher.TryDispatchAsync<TQuery, TResponse>(TQuery query, CancellationToken cancellationToken)");
     builder.AppendLine("    {");
     builder.AppendLine("        if (query is null)");
     builder.AppendLine("            throw new ArgumentNullException(nameof(query));");
@@ -153,20 +146,17 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
       var request = queryRequests[index];
       var variableName = $"typedQuery{index}";
       builder.AppendLine($"        if (query is {request.RequestType} {variableName})");
-      builder.AppendLine("        {");
-      builder.AppendLine($"            var response = await GeneratedDispatchExecutor.ExecuteQueryAsync<{request.RequestType}, {request.ResponseType}>(_handlerResolver, {variableName}, cancellationToken).ConfigureAwait(false);");
-      builder.AppendLine("            return DispatchResult<TResponse>.Handled(CastResponse<TResponse>(response));");
-      builder.AppendLine("        }");
+      builder.AppendLine($"            return GeneratedDispatchExecutor.ExecuteQueryHandledAsync<{request.RequestType}, {request.ResponseType}, TResponse>(_handlerResolver, {variableName}, cancellationToken);");
       builder.AppendLine();
     }
 
-    builder.AppendLine("        return DispatchResult<TResponse>.NotHandled();");
+    builder.AppendLine("        return new ValueTask<DispatchResult<TResponse>>(DispatchResult<TResponse>.NotHandled());");
     builder.AppendLine("    }");
   }
 
   private static void RenderNotificationMethod(StringBuilder builder, ImmutableArray<string> notificationRequests)
   {
-    builder.AppendLine("    async ValueTask<bool> IGeneratedNotificationDispatcher.TryPublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken)");
+    builder.AppendLine("    ValueTask<bool> IGeneratedNotificationDispatcher.TryPublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken)");
     builder.AppendLine("    {");
     builder.AppendLine("        if (notification is null)");
     builder.AppendLine("            throw new ArgumentNullException(nameof(notification));");
@@ -177,14 +167,11 @@ public sealed class DispatcherSourceGenerator : IIncrementalGenerator
       var requestType = notificationRequests[index];
       var variableName = $"typedNotification{index}";
       builder.AppendLine($"        if (notification is {requestType} {variableName})");
-      builder.AppendLine("        {");
-      builder.AppendLine($"            await GeneratedDispatchExecutor.PublishNotificationAsync(_handlerResolver, {variableName}, cancellationToken).ConfigureAwait(false);");
-      builder.AppendLine("            return true;");
-      builder.AppendLine("        }");
+      builder.AppendLine($"            return GeneratedDispatchExecutor.PublishNotificationHandledAsync(_handlerResolver, {variableName}, cancellationToken);");
       builder.AppendLine();
     }
 
-    builder.AppendLine("        return false;");
+    builder.AppendLine("        return new ValueTask<bool>(false);");
     builder.AppendLine("    }");
   }
 }

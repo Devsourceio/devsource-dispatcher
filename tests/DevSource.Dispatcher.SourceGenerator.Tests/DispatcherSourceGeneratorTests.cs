@@ -55,6 +55,11 @@ public sealed class DispatcherSourceGeneratorTests
         Assert.Contains("command is global::Sample.ResponseCommand", generated);
         Assert.Contains("query is global::Sample.SampleQuery", generated);
         Assert.Contains("notification is global::Sample.SampleNotification", generated);
+        Assert.DoesNotContain("async", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("await", generated, StringComparison.Ordinal);
+        Assert.Contains("ExecuteCommandHandledAsync", generated, StringComparison.Ordinal);
+        Assert.Contains("ExecuteQueryHandledAsync", generated, StringComparison.Ordinal);
+        Assert.Contains("PublishNotificationHandledAsync", generated, StringComparison.Ordinal);
     }
 
     [Fact]
